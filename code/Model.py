@@ -1,4 +1,6 @@
 ### Model ###
+# make sure it is applicable on the HPC GPU/CPU
+
 
 ## create initial model ##
 
