@@ -1,4 +1,5 @@
 ### train ###
+# make sure the code is applicable to HPC GPU/CPU
 # all of these functions should come with basic visualizations and summary tables
 
 
