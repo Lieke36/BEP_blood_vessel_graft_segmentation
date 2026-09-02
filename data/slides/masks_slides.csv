@@ -1,1 +1,2 @@
-
+slide_id,filename,mask_path,width,height,magnification,source_magnification,min_x,min_y,max_x,max_y,margin
+10955,20R51 - end - Masson.ndpi,C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_10955_mask.png,15399,27994,10,40,5196.8,8083.2,20595.2,36076.8,0.1

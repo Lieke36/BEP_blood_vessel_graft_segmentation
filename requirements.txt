@@ -1,0 +1,4 @@
+cytomine-python-client
+pillow
+pandas
+shapely
