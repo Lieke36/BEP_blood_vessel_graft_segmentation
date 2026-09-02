@@ -813,6 +813,8 @@ annotated_images = get_image_group_images(PROJECT_ID)
 for image in annotated_images:
     print(image.id, image.instanceFilename, image.width, image.height)
 
+## download full annotated images and masks ##
+
 download_slides(
     project_id=PROJECT_ID,
     margin=0.1,
@@ -820,15 +822,5 @@ download_slides(
     target="Tissue area",
     slide_id=10955,
 )
-
-
-
-## download full annotated images (10x magnification) (to data -> slides -> tissue) ##
-# same dimension as below
-# use boundary annotation + 10% length
-
-
-## download full masks (10 x magnification) (to data -> slides -> masks) ##
-
 
 ## visualize annotated mask over tissue to show its aligned ##
