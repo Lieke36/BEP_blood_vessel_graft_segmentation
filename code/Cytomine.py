@@ -1,4 +1,5 @@
 ### Cytomine data extraction ###
+# make sure the code is applicable to HPC GPU/CPU
 
 ## connect to cytomine ##
 
