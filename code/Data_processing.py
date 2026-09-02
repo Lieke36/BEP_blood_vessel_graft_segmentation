@@ -1,4 +1,5 @@
 ### Data_processing ###
+# make sure the code is applicable to HPC GPU/CPU
 # Asume image of full tissue to be segmented is available
 
 
