@@ -1,2 +1,10 @@
 slide_id,filename,mask_path,width,height,magnification,source_magnification,min_x,min_y,max_x,max_y,margin
 10955,20R51 - end - Masson.ndpi,C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_10955_mask.png,15399,27994,10,40,5196.8,8083.2,20595.2,36076.8,0.1
+2152,20R42 - end - calponin.ndpi,C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_2152_mask.png,9351,11520,10,40,3948.8,3800.0,13299.2,15320.0,0.1
+10535,20R52 - end - elastin.ndpi,C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_10535_mask.png,28493,22733,10,40,2569.6,2793.6,31062.4,25526.4,0.1
+10925,20R52 - end - Masson.ndpi,C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_10925_mask.png,37418,22080,10,40,0,2304.0,37417.6,24384.0,0.1
+11712,20R36 - end - Kossa.ndpi,C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_11712_mask.png,26189,52698,10,40,8025.6,0,34214.4,52697.6,0.1
+9943,20R49 - end - calponin.ndpi,C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_9943_mask.png,12788,10522,10,40,48734.4,15675.2,61521.6,26196.8,0.1
+10010,20R29 - end - calponin.ndpi,C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_10010_mask.png,29122,26196,10,40,59198.0403857765,0,88320,26195.2,0.1
+7522,CV42361 18R26 2 Graft mid_Ki67.czi,C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_7522_mask.png,11808,16436,10,20,1648.0,7710.4,13456.0,24145.6,0.1
+11525,20R46 - end - Kossa.ndpi,C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_11525_mask.png,27648,31565,10,40,3600.0,3657.6,31248.0,35222.4,0.1

@@ -801,7 +801,7 @@ PROJECT_ID = 1903  # Replace with the Cytomine project ID that contains 'Annotat
 
 # for HPC use: /home/20234257/BEP_Project/External_data/slides
 # for laptop storage use: C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides
-OUTPUT_DIR = Path(r"/home/20234257/BEP_Project/External_data/slides") # place to store data
+OUTPUT_DIR = Path(r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides") # place to store data
 
 
 
@@ -812,19 +812,30 @@ cytomine = Cytomine.connect(HOST, public_key, private_key)
 print(f"Connected as {cytomine.current_user}")
 
 ## get annotated image group ##
+image_id_list = []
 
 annotated_images = get_image_group_images(PROJECT_ID)
 for image in annotated_images:
+    image_id_list.append(image.id)
     print(image.id, image.instanceFilename, image.width, image.height)
 
 ## download full annotated images and masks ##
 
-download_slides(
-    project_id=PROJECT_ID,
-    margin=0.1,
-    directory_slides=OUTPUT_DIR,
-    target="Tissue area",
-    slide_id=10955,
-)
+image_id_list_downloaded = [10955, 2152, 10535, 10925, 11712, 9943, 10010, 7522, 11525]
+
+# image 2143 wont work because there is no "Tissue area" annotations
+
+for slide in image_id_list:
+    if slide not in image_id_list_downloaded:
+        download_slides(
+            project_id=PROJECT_ID,
+            margin=0.1,
+            directory_slides=OUTPUT_DIR,
+            target="Tissue area",
+            slide_id=slide,
+        )
+
+
+
 
 ## visualize annotated mask over tissue to show its aligned ##
