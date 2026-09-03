@@ -798,7 +798,11 @@ def download_slides(
 
 HOST = "http://131.155.65.6:8080/"
 PROJECT_ID = 1903  # Replace with the Cytomine project ID that contains 'Annotated'.
-OUTPUT_DIR = Path(r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides") # place to store data
+
+# for HPC use: /home/20234257/BEP_Project/External_data/slides
+# for laptop storage use: C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides
+OUTPUT_DIR = Path(r"/home/20234257/BEP_Project/External_data/slides") # place to store data
+
 
 
 public_key = getpass("Cytomine public key: ")
