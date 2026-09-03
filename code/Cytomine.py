@@ -1,5 +1,5 @@
 ### Cytomine data extraction ###
-# make sure the code is applicable to HPC GPU/CPU
+# make sure the code is applicable to HPC GPU/CPU -> currently doesn't work
 
 ## libaries ##
 # IMPORTANT: run [pip install -r requirements.txt] in terminal using "python -m pip install -r requirements.txt"

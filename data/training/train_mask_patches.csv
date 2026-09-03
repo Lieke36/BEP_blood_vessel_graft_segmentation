@@ -1,1 +1,2 @@
-
+slide_id,patch_id,x,y,magnification,degrees,stain_intensity,mask_path
+2152,2152_0,240,4707,1.0732231325651764,255.74436174085167,0,image_2152_patch_0_mask.png
