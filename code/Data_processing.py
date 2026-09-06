@@ -25,12 +25,193 @@ from pathlib import Path
 import csv
 import math
 import random
+import time # to see runtime of data set
 
 from PIL import Image
 
+Image.MAX_IMAGE_PIXELS = None # avoid error due to large image (slide)
 
+start_time = time.time()
 
 ## functions ##
+
+def get_required_source_size(
+    patch_size,
+    degrees,
+    magnification,
+    extra_margin=4,
+):
+    """
+    Calculates how large the source crop must be so that a
+    rotated patch can completely fill the final output grid.
+
+    For a square patch, the required bounding-box size is:
+
+        patch_size * (abs(cos(theta)) + abs(sin(theta)))
+
+    The magnification factor is then applied to this source
+    size.
+
+    A small extra margin is added to avoid interpolation
+    touching the source boundary.
+    """
+
+    theta = math.radians(degrees)
+
+    rotation_factor = (
+        abs(math.cos(theta))
+        + abs(math.sin(theta))
+    )
+
+    required_size = (
+        patch_size
+        * rotation_factor
+        * magnification
+    )
+
+    required_size = math.ceil(required_size)
+
+    # Small safety margin for interpolation.
+    required_size += extra_margin
+
+    return required_size
+
+
+def rotate_backward(
+    image,
+    degrees,
+    output_size=512,
+    resample=Image.Resampling.BICUBIC,
+):
+    """
+    Rotates an image using backward/inverse mapping.
+
+    The output grid is created first.
+
+    For every output pixel, the corresponding source coordinate
+    is calculated and the source intensity is interpolated there.
+
+    This is different from rotating a 512x512 canvas and then
+    dealing with the empty corners.
+
+    Parameters
+    ----------
+    image : PIL.Image
+        Source image. It must be large enough to contain the
+        complete rotated output region.
+
+    degrees : float
+        Rotation angle in degrees.
+
+    output_size : int
+        Final output width and height.
+
+    resample : PIL.Image.Resampling
+        Interpolation method.
+
+    Returns
+    -------
+    PIL.Image
+        Rotated image of exactly output_size x output_size.
+    """
+
+    source_width, source_height = image.size
+
+    output_width = output_size
+    output_height = output_size
+
+    # ---------------------------------------------------------
+    # Centre of source image.
+    # ---------------------------------------------------------
+
+    source_cx = (
+        source_width - 1
+    ) / 2.0
+
+    source_cy = (
+        source_height - 1
+    ) / 2.0
+
+    # ---------------------------------------------------------
+    # Centre of output image.
+    # ---------------------------------------------------------
+
+    output_cx = (
+        output_width - 1
+    ) / 2.0
+
+    output_cy = (
+        output_height - 1
+    ) / 2.0
+
+    # ---------------------------------------------------------
+    # Rotation angle.
+    # ---------------------------------------------------------
+
+    theta = math.radians(degrees)
+
+    cos_theta = math.cos(theta)
+    sin_theta = math.sin(theta)
+
+    # ---------------------------------------------------------
+    # Backward transformation.
+    #
+    # For every output pixel (x, y), calculate the corresponding
+    # source coordinate.
+    #
+    # The inverse mapping is:
+    #
+    # source_x =
+    #     cos(theta) * output_x
+    #     + sin(theta) * output_y
+    #
+    # source_y =
+    #     -sin(theta) * output_x
+    #     + cos(theta) * output_y
+    #
+    # ---------------------------------------------------------
+
+    a = cos_theta
+    b = sin_theta
+
+    c = (
+        source_cx
+        - cos_theta * output_cx
+        - sin_theta * output_cy
+    )
+
+    d = -sin_theta
+    e = cos_theta
+
+    f = (
+        source_cy
+        + sin_theta * output_cx
+        - cos_theta * output_cy
+    )
+
+    # ---------------------------------------------------------
+    # Perform the inverse transformation.
+    # ---------------------------------------------------------
+
+    transformed = image.transform(
+        (
+            output_width,
+            output_height,
+        ),
+        Image.Transform.AFFINE,
+        (
+            a,
+            b,
+            c,
+            d,
+            e,
+            f,
+        ),
+        resample=resample,
+    )
+
+    return transformed
+
 
 def random_patch_train(
     slides_dir,
@@ -44,19 +225,23 @@ def random_patch_train(
 
     For every patch:
     - random location on the slide
-    - random magnification between
-      1 - magnification_change and
-      1 + magnification_change
-    - random rotation between 0 and 360 degrees
-    - final patch size is always 512x512 px
-    - tissue and mask receive exactly the same transformations
+    - random magnification
+    - random rotation
+    - final output is always 512x512
+    - tissue and mask receive exactly the same geometric
+      transformation
 
-    Patch information is stored in:
-        data/training/train_tissue_patches.csv
-        data/training/train_mask_patches.csv
+    Rotation is performed using backward/inverse mapping.
 
-    Patch images are stored in:
-        train_output_dir
+    The important difference from the previous implementation is
+    that the 512x512 output grid is determined first. Each output
+    pixel is then mapped back to the source image.
+
+    This prevents black corners caused by rotating a 512x512
+    image canvas.
+
+    The CSV x/y coordinates refer to the top-left corner of the
+    larger source crop used for the transformation.
     """
 
     patch_size = 512
@@ -70,20 +255,28 @@ def random_patch_train(
     )
 
     csv_dir = Path("data/training")
+
     csv_dir.mkdir(
         parents=True,
         exist_ok=True,
     )
 
-    tissue_csv = csv_dir / "train_tissue_patches.csv"
-    mask_csv = csv_dir / "train_mask_patches.csv"
+    tissue_csv = (
+        csv_dir / "train_tissue_patches.csv"
+    )
+
+    mask_csv = (
+        csv_dir / "train_mask_patches.csv"
+    )
 
     tissue_path = (
-        slides_dir / f"image_{slide_id}_tissue.png"
+        slides_dir
+        / f"image_{slide_id}_tissue.png"
     )
 
     mask_path = (
-        slides_dir / f"image_{slide_id}_mask.png"
+        slides_dir
+        / f"image_{slide_id}_mask.png"
     )
 
     if not tissue_path.exists():
@@ -97,64 +290,55 @@ def random_patch_train(
         )
 
     # ---------------------------------------------------------
-    # Open the images without converting the entire slide.
+    # Open slide images.
     # ---------------------------------------------------------
 
-    tissue_image = Image.open(tissue_path)
-    mask_image = Image.open(mask_path)
+    tissue_image = Image.open(
+        tissue_path
+    )
+
+    mask_image = Image.open(
+        mask_path
+    )
 
     try:
 
+        # -----------------------------------------------------
+        # Check that tissue and mask have identical dimensions.
+        # -----------------------------------------------------
+
         if tissue_image.size != mask_image.size:
+
             raise ValueError(
-                f"Tissue and mask sizes do not match for "
-                f"slide {slide_id}: "
-                f"{tissue_image.size} vs {mask_image.size}"
+                f"Tissue and mask sizes do not match "
+                f"for slide {slide_id}: "
+                f"{tissue_image.size} vs "
+                f"{mask_image.size}"
             )
 
         width, height = tissue_image.size
 
         # -----------------------------------------------------
-        # Random patches
+        # Generate random patches.
         # -----------------------------------------------------
 
         for patch_number in range(n):
 
             # -------------------------------------------------
             # Random magnification.
+            #
+            # This preserves the meaning of your original code:
+            #
+            # magnification > 1
+            #     -> larger source region
+            #
+            # magnification < 1
+            #     -> smaller source region
             # -------------------------------------------------
 
             magnification = random.uniform(
                 1 - magnification_change,
                 1 + magnification_change,
-            )
-
-            source_size = round(
-                patch_size * magnification
-            )
-
-            # Make sure the source crop fits on the slide.
-            source_size = min(
-                source_size,
-                width,
-                height,
-            )
-
-            # -------------------------------------------------
-            # Random top-left coordinate.
-            # -------------------------------------------------
-
-            max_x = width - source_size
-            max_y = height - source_size
-
-            x = random.randint(
-                0,
-                max_x,
-            )
-
-            y = random.randint(
-                0,
-                max_y,
             )
 
             # -------------------------------------------------
@@ -167,9 +351,84 @@ def random_patch_train(
             )
 
             # -------------------------------------------------
-            # Crop ONLY the required region.
+            # Determine how large the source region needs to be.
             #
-            # We do not convert the entire slide.
+            # At 0 degrees:
+            #
+            #     source ~= 512 * magnification
+            #
+            # At 45 degrees:
+            #
+            #     source ~= 512 * sqrt(2) * magnification
+            #
+            # This gives enough source pixels to completely fill
+            # the 512x512 output after rotation.
+            # -------------------------------------------------
+
+            source_size = get_required_source_size(
+                patch_size=patch_size,
+                degrees=degrees,
+                magnification=magnification,
+            )
+
+            # -------------------------------------------------
+            # Make sure the source crop can actually fit inside
+            # the slide.
+            #
+            # We do NOT pad with black.
+            #
+            # If the slide is too small, there is no mathematically
+            # valid way to create the requested fully populated
+            # patch without going outside the slide.
+            # -------------------------------------------------
+
+            if source_size > width:
+
+                raise ValueError(
+                    f"Slide {slide_id} is too narrow for "
+                    f"the requested transformation. "
+                    f"Required source width: {source_size}, "
+                    f"slide width: {width}."
+                )
+
+            if source_size > height:
+
+                raise ValueError(
+                    f"Slide {slide_id} is too short for "
+                    f"the requested transformation. "
+                    f"Required source height: {source_size}, "
+                    f"slide height: {height}."
+                )
+
+            # -------------------------------------------------
+            # Random top-left coordinate.
+            #
+            # Because we crop the larger source region, x/y now
+            # describe that larger source region.
+            # -------------------------------------------------
+
+            max_x = (
+                width - source_size
+            )
+
+            max_y = (
+                height - source_size
+            )
+
+            x = random.randint(
+                0,
+                max_x,
+            )
+
+            y = random.randint(
+                0,
+                max_y,
+            )
+
+            # -------------------------------------------------
+            # Crop the larger source region.
+            #
+            # This is the key to avoiding black corners.
             # -------------------------------------------------
 
             tissue_patch = tissue_image.crop(
@@ -191,47 +450,131 @@ def random_patch_train(
             )
 
             # -------------------------------------------------
-            # Convert ONLY the small patches.
+            # Convert only the small crops.
             # -------------------------------------------------
 
-            tissue_patch = tissue_patch.convert("RGB")
-            mask_patch = mask_patch.convert("L")
+            tissue_patch = tissue_patch.convert(
+                "RGB"
+            )
+
+            mask_patch = mask_patch.convert(
+                "L"
+            )
 
             # -------------------------------------------------
-            # Resize both to 512x512.
+            # Calculate the size of the source image after
+            # magnification has been applied.
             #
-            # Tissue: LANCZOS
-            # Mask: NEAREST
+            # We want the geometric relationship to be:
+            #
+            # large source crop
+            #       ↓
+            # magnification
+            #       ↓
+            # sufficiently large rotated source
+            #       ↓
+            # 512x512 output
+            # -------------------------------------------------
+
+            rotation_factor = (
+                abs(
+                    math.cos(
+                        math.radians(degrees)
+                    )
+                )
+                +
+                abs(
+                    math.sin(
+                        math.radians(degrees)
+                    )
+                )
+            )
+
+            transformed_source_size = math.ceil(
+                patch_size
+                * rotation_factor
+            )
+
+            # Safety margin.
+            transformed_source_size += 4
+
+            # -------------------------------------------------
+            # Resize the source crop.
+            #
+            # Tissue:
+            #     LANCZOS
+            #
+            # Mask:
+            #     NEAREST
             # -------------------------------------------------
 
             tissue_patch = tissue_patch.resize(
-                (patch_size, patch_size),
+                (
+                    transformed_source_size,
+                    transformed_source_size,
+                ),
                 Image.Resampling.LANCZOS,
             )
 
             mask_patch = mask_patch.resize(
-                (patch_size, patch_size),
+                (
+                    transformed_source_size,
+                    transformed_source_size,
+                ),
                 Image.Resampling.NEAREST,
             )
 
             # -------------------------------------------------
-            # Rotate both by exactly the same amount.
+            # BACKWARD TRANSFORMATION
+            #
+            # The final 512x512 grid is created first.
+            #
+            # For every output pixel, rotate backwards to find
+            # the corresponding source pixel.
+            #
+            # No black canvas is created.
             # -------------------------------------------------
 
-            tissue_patch = tissue_patch.rotate(
-                degrees,
+            tissue_patch = rotate_backward(
+                image=tissue_patch,
+                degrees=degrees,
+                output_size=patch_size,
                 resample=Image.Resampling.BICUBIC,
-                expand=False,
             )
 
-            mask_patch = mask_patch.rotate(
-                degrees,
+            mask_patch = rotate_backward(
+                image=mask_patch,
+                degrees=degrees,
+                output_size=patch_size,
                 resample=Image.Resampling.NEAREST,
-                expand=False,
             )
 
             # -------------------------------------------------
-            # Future stain augmentation
+            # Safety check.
+            # -------------------------------------------------
+
+            if tissue_patch.size != (
+                patch_size,
+                patch_size,
+            ):
+
+                raise RuntimeError(
+                    "Tissue patch has incorrect size: "
+                    f"{tissue_patch.size}"
+                )
+
+            if mask_patch.size != (
+                patch_size,
+                patch_size,
+            ):
+
+                raise RuntimeError(
+                    "Mask patch has incorrect size: "
+                    f"{mask_patch.size}"
+                )
+
+            # -------------------------------------------------
+            # Future stain augmentation.
             #
             # 0 = no stain augmentation
             # 1 = weak
@@ -242,25 +585,37 @@ def random_patch_train(
             stain_intensity = 0
 
             # -------------------------------------------------
-            # Patch ID
+            # Patch ID.
             # -------------------------------------------------
 
             patch_id = (
                 f"{slide_id}_{patch_number}"
             )
 
+            # -------------------------------------------------
+            # Output paths.
+            # -------------------------------------------------
+
             tissue_destination = (
                 train_output_dir
-                / f"image_{slide_id}_patch_{patch_number}_tissue.png"
+                / (
+                    f"image_{slide_id}"
+                    f"_patch_{patch_number}"
+                    f"_tissue.png"
+                )
             )
 
             mask_destination = (
                 train_output_dir
-                / f"image_{slide_id}_patch_{patch_number}_mask.png"
+                / (
+                    f"image_{slide_id}"
+                    f"_patch_{patch_number}"
+                    f"_mask.png"
+                )
             )
 
             # -------------------------------------------------
-            # Save patches.
+            # Save.
             # -------------------------------------------------
 
             tissue_patch.save(
@@ -272,14 +627,14 @@ def random_patch_train(
             )
 
             # -------------------------------------------------
-            # Close the small patch images immediately.
+            # Close temporary images.
             # -------------------------------------------------
 
             tissue_patch.close()
             mask_patch.close()
 
             # -------------------------------------------------
-            # Store CSV information.
+            # Store tissue information.
             # -------------------------------------------------
 
             append_csv_row(
@@ -292,9 +647,15 @@ def random_patch_train(
                     "magnification": magnification,
                     "degrees": degrees,
                     "stain_intensity": stain_intensity,
-                    "tissue_path": tissue_destination.name,
+                    "tissue_path": (
+                        tissue_destination.name
+                    ),
                 },
             )
+
+            # -------------------------------------------------
+            # Store mask information.
+            # -------------------------------------------------
 
             append_csv_row(
                 mask_csv,
@@ -306,21 +667,26 @@ def random_patch_train(
                     "magnification": magnification,
                     "degrees": degrees,
                     "stain_intensity": stain_intensity,
-                    "mask_path": mask_destination.name,
+                    "mask_path": (
+                        mask_destination.name
+                    ),
                 },
             )
 
             print(
-                f"Created training patch {patch_id}: "
+                f"Created training patch "
+                f"{patch_id}: "
                 f"x={x}, y={y}, "
-                f"magnification={magnification:.3f}, "
+                f"source_size={source_size}, "
+                f"magnification="
+                f"{magnification:.3f}, "
                 f"degrees={degrees:.1f}"
             )
 
     finally:
 
         # -----------------------------------------------------
-        # Close the original slide files.
+        # Close original slide files.
         # -----------------------------------------------------
 
         tissue_image.close()
@@ -666,15 +1032,15 @@ def get_slide_ids(csv_path):
 
 ## set paths of the slides and the output paths ##
 # Note to self: for HPC, use the correct (different) paths!
-slides_dir = r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides"
-train_output_dir = r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\training"
-test_output_dir = r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\testing"
-val_output_dir = r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\validation"
+slides_dir = r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides" # !!! Change for HPC (copy slides pngs to HPC data location) !!!
+train_output_dir = r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\training" # !!! Change for HPC !!!
+test_output_dir = r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\testing" # !!! Change for HPC !!!
+val_output_dir = r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\validation" # !!! Change for HPC !!!
 
 
 # code to get the slide id's from tissue_slides.csv
 
-slides_csv = Path("data/slides/tissue_slides.csv")
+slides_csv = Path("data/slides/tissue_slides.csv") # No change needed for HPC
 
 image_id_list = get_slide_ids(slides_csv)
 
@@ -690,45 +1056,38 @@ test_slide_id_list = [10955, 11525]
 val_slide_id_list = [9943, 10535]
 
 
-## test functionality ##
-random_patch_train(
+
+## download random training patches ##
+
+for slide_id in train_slide_id_list:
+    random_patch_train(
         slides_dir=slides_dir,
         train_output_dir=train_output_dir,
-        slide_id=2152,
+        slide_id=slide_id,
         n=1,
         magnification_change=0.1,
     )
 
 
-
-## download random training patches ##
-#for slide_id in train_slide_id_list:
-#
-#    random_patch_train(
-#        slides_dir=slides_dir,
-#        train_output_dir=train_output_dir,
-#        slide_id=slide_id,
-#        n=1,
-#        magnification_change=0.1,
-#    )
-
-
 ## download training/testing patches ##
-# for slide_id in test_slide_id_list:
-#
-#     full_patch_extraction(
-#         slides_dir=slides_dir,
-#         output_dir=test_output_dir,
-#         slide_id=slide_id,
-#         group="test",
-#     )
+
+for slide_id in test_slide_id_list:
+    full_patch_extraction(
+        slides_dir=slides_dir,
+        output_dir=test_output_dir,
+        slide_id=slide_id,
+        group="test",
+    )
 
 
-# for slide_id in val_slide_id_list:
-#
-#     full_patch_extraction(
-#         slides_dir=slides_dir,
-#         output_dir=val_output_dir,
-#         slide_id=slide_id,
-#         group="validation",
-#     )
+for slide_id in val_slide_id_list:
+    full_patch_extraction(
+        slides_dir=slides_dir,
+        output_dir=val_output_dir,
+        slide_id=slide_id,
+        group="validation",
+    )
+
+
+end_time = time.time()
+print(f"Runtime: {end_time - start_time:.2f} seconds")
