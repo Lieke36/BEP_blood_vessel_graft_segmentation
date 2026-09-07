@@ -1032,10 +1032,16 @@ def get_slide_ids(csv_path):
 
 ## set paths of the slides and the output paths ##
 # Note to self: for HPC, use the correct (different) paths!
-slides_dir = r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides" # !!! Change for HPC (copy slides pngs to HPC data location) !!!
-train_output_dir = r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\training" # !!! Change for HPC !!!
-test_output_dir = r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\testing" # !!! Change for HPC !!!
-val_output_dir = r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\validation" # !!! Change for HPC !!!
+slides_dir = r"/home/20234257/BEP_Project/External_data/slides"
+train_output_dir = r"/home/20234257/BEP_Project/External_data/training" 
+test_output_dir = r"/home/20234257/BEP_Project/External_data/testing"
+val_output_dir = r"/home/20234257/BEP_Project/External_data/validation"
+
+## paths for laptop (without HPC) ##
+# slides_dir = r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides"
+# train_output_dir = r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\training"
+# test_output_dir = r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\testing"
+# val_output_dir = r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\validation"
 
 
 # code to get the slide id's from tissue_slides.csv
