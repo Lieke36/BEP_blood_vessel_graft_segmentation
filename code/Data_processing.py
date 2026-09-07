@@ -1070,29 +1070,29 @@ for slide_id in train_slide_id_list:
         slides_dir=slides_dir,
         train_output_dir=train_output_dir,
         slide_id=slide_id,
-        n=1,
+        n=2000,
         magnification_change=0.1,
     )
 
 
 ## download training/testing patches ##
 
-for slide_id in test_slide_id_list:
-    full_patch_extraction(
-        slides_dir=slides_dir,
-        output_dir=test_output_dir,
-        slide_id=slide_id,
-        group="test",
-    )
+#for slide_id in test_slide_id_list:
+#    full_patch_extraction(
+#        slides_dir=slides_dir,
+#        output_dir=test_output_dir,
+#        slide_id=slide_id,
+#        group="test",
+#    )
 
 
-for slide_id in val_slide_id_list:
-    full_patch_extraction(
-        slides_dir=slides_dir,
-        output_dir=val_output_dir,
-        slide_id=slide_id,
-        group="validation",
-    )
+#for slide_id in val_slide_id_list:
+#    full_patch_extraction(
+#        slides_dir=slides_dir,
+#        output_dir=val_output_dir,
+#        slide_id=slide_id,
+#        group="validation",
+#    )
 
 
 end_time = time.time()
