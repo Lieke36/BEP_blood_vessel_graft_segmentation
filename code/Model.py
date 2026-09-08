@@ -104,11 +104,11 @@ CLASSES = 1
 # Training parameters
 # ------------------------------------------------------------
 
-BATCH_SIZE = 4  # use 4 for initial
+BATCH_SIZE = 8  # use 4 for initial
 
-EPOCHS = 20 # use 20 for initial
+EPOCHS = 10 # use 20 for initial
 
-SAMPLE_SIZE = 1000 # use 1000 for initial
+SAMPLE_SIZE = 100 # use 1000 for initial
 
 LEARNING_RATE = 1e-4
 
@@ -121,7 +121,7 @@ THRESHOLD = 0.5
 # DataLoader parameters
 # ------------------------------------------------------------
 
-NUM_WORKERS = 0
+NUM_WORKERS = 4 # use 0 for initial
 
 PIN_MEMORY = True
 
