@@ -71,7 +71,7 @@ VALIDATION_DIR = Path(
 )
 
 RESULTS_DIR = Path(
-    r"/home/20234257/BEP_Project/Results"
+    r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results" 
 )
 
 MODEL_DIR = (
