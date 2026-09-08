@@ -1142,7 +1142,16 @@ def run_initial_experiment(
     """
     Runs one complete baseline experiment.
     """
+    # --------------------------------------------------------
+    # Experiment name
+    # --------------------------------------------------------
 
+    experiment_name = (
+        f"n{sample_size}"
+        f"_bs{batch_size}"
+        f"_ep{epochs}"
+    )
+    
     # --------------------------------------------------------
     # Create output directories
     # --------------------------------------------------------
@@ -1329,7 +1338,7 @@ def run_initial_experiment(
 
     best_model_path = (
         MODEL_DIR
-        / "initial_unet_resnet34_best.pth"
+        / f"{experiment_name}_best.pth"
     )
 
     # --------------------------------------------------------
@@ -1610,7 +1619,7 @@ def run_initial_experiment(
 
     history_path = (
         METRICS_DIR
-        / "initial_training_history.csv"
+        / f"{experiment_name}_training_history.csv"
     )
 
     history_df.to_csv(
@@ -1624,7 +1633,7 @@ def run_initial_experiment(
 
     plot_path = (
         VISUALIZATION_DIR
-        / "initial_training_curves.png"
+        / f"{experiment_name}_training_curves.png"
     )
 
     plot_training_history(
@@ -1716,7 +1725,7 @@ def run_initial_experiment(
 
     summary_path = (
         METRICS_DIR
-        / "initial_training_summary.csv"
+        / f"{experiment_name}_training_summary.csv"
     )
 
     summary_df.to_csv(
