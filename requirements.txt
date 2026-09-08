@@ -2,3 +2,8 @@ cytomine-python-client
 pillow
 pandas
 shapely
+numpy
+matplotlib
+torch
+torchvision
+segmentation-models-pytorch
