@@ -108,7 +108,7 @@ BATCH_SIZE = 8  # use 4 for initial
 
 EPOCHS = 10 # use 20 for initial
 
-SAMPLE_SIZE = 100 # use 1000 for initial
+SAMPLE_SIZE = 500 # use 1000 for initial
 
 LEARNING_RATE = 1e-4
 
