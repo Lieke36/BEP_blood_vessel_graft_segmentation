@@ -644,15 +644,15 @@ def download_predicted_mask(
 # Main
 # ============================================================
 
-if __name__ == "__main__":
+# Note:
+# train_slide_id_list = [2152, 7522, 10010, 10925, 11712]
+# test_slide_id_list = [10955, 11525]
+# val_slide_id_list = [9943, 10535]
 
-    # --------------------------------------------------------
-    # Example
-    # --------------------------------------------------------
-    #
-    # Change these paths to your actual files.
-    #
-    # --------------------------------------------------------
+slide_id_list = [9943]
+patch_nr_list = [0]
+
+if __name__ == "__main__":
 
     INPUT_PATH = Path(
         r"/home/20234257/BEP_Project/External_data/validation"
@@ -665,11 +665,12 @@ if __name__ == "__main__":
     MODEL_PATH = Path(
         r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/models/n10000_bs8_ep50_best.pth"
     )
-
-    download_predicted_mask(
-        slide_id=1,
-        patch_nr=25,
-        input_path=INPUT_PATH,
-        output_path=OUTPUT_PATH,
-        model_path=MODEL_PATH,
-    )
+    for slide in slide_id_list:
+        for patch in patch_nr_list:
+            download_predicted_mask(
+                slide_id=slide,
+                patch_nr=patch,
+                input_path=INPUT_PATH,
+                output_path=OUTPUT_PATH,
+                model_path=MODEL_PATH,
+            )
