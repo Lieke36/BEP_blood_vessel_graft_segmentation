@@ -649,8 +649,8 @@ def download_predicted_mask(
 # test_slide_id_list = [10955, 11525]
 # val_slide_id_list = [9943, 10535]
 
-slide_id_list = [9943]
-patch_nr_list = [0, 104, 113, 126, 127]
+slide_id_list = [10535]
+patch_nr_list = [0, 192, 250, 252, 310]
 
 if __name__ == "__main__":
 
