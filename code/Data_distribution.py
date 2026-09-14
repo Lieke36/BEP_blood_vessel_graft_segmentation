@@ -10,7 +10,7 @@ import numpy as np
 # ============================================================
 
 MASK_PATH = Path(
-    r"/home/20234257/BEP_Project/External_data/training"
+    r"/home/20234257/BEP_Project/External_data/validation"
 )
 
 
