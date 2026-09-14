@@ -663,7 +663,7 @@ if __name__ == "__main__":
     )
 
     MODEL_PATH = Path(
-        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/models/n10000_bs4_ep50_best.pth"
+        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/models/n10000_bs16_ep50_best.pth"
     )
     for slide in slide_id_list:
         for patch in patch_nr_list:
