@@ -363,6 +363,9 @@ def download_predicted_mask(
     """
     Predicts and saves the segmentation mask for one patch.
 
+    Also saves the sigmoid probability map before the
+    threshold is applied.
+
     Parameters
     ----------
     slide_id : str or int
@@ -380,7 +383,8 @@ def download_predicted_mask(
             image_{slide_id}_patch_{patch_nr}_mask.png
 
     output_path : str or Path
-        Directory where the predicted mask will be saved.
+        Directory where the predicted mask and sigmoid
+        prediction map will be saved.
 
     model_path : str or Path
         Path to the trained .pth model.
@@ -400,6 +404,7 @@ def download_predicted_mask(
             sensitivity
             precision
             predicted_mask_path
+            sigmoid_prediction_path
     """
 
     # --------------------------------------------------------
@@ -424,20 +429,23 @@ def download_predicted_mask(
 
     tissue_filename = (
         f"image_{slide_id}"
-        f"_patch_{patch_nr}"
-        f"_tissue.png"
+        f"_patch_{patch_nr}_tissue.png"
     )
 
     mask_filename = (
         f"image_{slide_id}"
-        f"_patch_{patch_nr}"
-        f"_mask.png"
+        f"_patch_{patch_nr}_mask.png"
     )
 
     predicted_filename = (
         f"image_{slide_id}"
-        f"_patch_{patch_nr}"
-        f"_predicted.png"
+        f"_patch_{patch_nr}_predicted.png"
+    )
+
+    # NEW: sigmoid prediction filename
+    sigmoid_filename = (
+        f"image_{slide_id}"
+        f"_patch_{patch_nr}_sigmoid.png"
     )
 
     tissue_path = (
@@ -453,6 +461,12 @@ def download_predicted_mask(
     predicted_path = (
         output_path
         / predicted_filename
+    )
+
+    # NEW: sigmoid prediction path
+    sigmoid_path = (
+        output_path
+        / sigmoid_filename
     )
 
     # --------------------------------------------------------
@@ -535,6 +549,49 @@ def download_predicted_mask(
             logits
         )
 
+        # ----------------------------------------------------
+        # Save sigmoid prediction map
+        #
+        # The sigmoid output contains probabilities from
+        # 0.0 to 1.0.
+        #
+        # Convert:
+        #
+        # 0.0 -> 0
+        # 0.5 -> approximately 127
+        # 1.0 -> 255
+        #
+        # This is saved BEFORE applying the threshold.
+        # ----------------------------------------------------
+
+        sigmoid_map = (
+            probabilities[0, 0]
+            .cpu()
+            .numpy()
+        )
+
+        sigmoid_map = (
+            sigmoid_map * 255
+        ).clip(
+            0,
+            255,
+        ).astype(
+            np.uint8
+        )
+
+        sigmoid_image = Image.fromarray(
+            sigmoid_map,
+            mode="L",
+        )
+
+        sigmoid_image.save(
+            sigmoid_path
+        )
+
+        # ----------------------------------------------------
+        # Apply threshold to create binary prediction
+        # ----------------------------------------------------
+
         predictions = (
             probabilities >= threshold
         ).float()
@@ -608,6 +665,10 @@ def download_predicted_mask(
 
     print(predicted_path)
 
+    print(f"Saved sigmoid prediction:")
+
+    print(sigmoid_path)
+
     print(
         "=" * 60
     )
@@ -635,6 +696,9 @@ def download_predicted_mask(
 
         "predicted_mask_path":
             str(predicted_path),
+
+        "sigmoid_prediction_path":
+            str(sigmoid_path),
     }
 
     return results
