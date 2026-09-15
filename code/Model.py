@@ -104,9 +104,9 @@ CLASSES = 1
 # Training parameters
 # ------------------------------------------------------------
 
-BATCH_SIZE = 16  # use 4 for initial
+BATCH_SIZE = 32  # use 4 for initial
 
-EPOCHS = 50 # use 20 for initial
+EPOCHS = 80 # use 20 for initial
 
 SAMPLE_SIZE = 10000 # use 1000 for initial
 
