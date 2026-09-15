@@ -1204,9 +1204,9 @@ def get_slide_ids(csv_path):
 
 # set ratios
 # ratios: (fill in None for all for no set ratio)
-background_ratio = 0.34
-edge_ratio = 0.33
-foreground_ratio=0.33
+background_ratio = 0.05
+edge_ratio = 0.70
+foreground_ratio=0.25
 
 ratio_name = (
     f"{int(background_ratio * 100)}_"
