@@ -63,7 +63,7 @@ from Losses_metrics import (
 # ------------------------------------------------------------
 
 TRAIN_DIR = Path(
-    r"/home/20234257/BEP_Project/External_data/training"
+    r"/home/20234257/BEP_Project/External_data/training_34_33_33"
 )
 
 VALIDATION_DIR = Path(
@@ -104,9 +104,9 @@ CLASSES = 1
 # Training parameters
 # ------------------------------------------------------------
 
-BATCH_SIZE = 32  # use 4 for initial
+BATCH_SIZE = 8  # use 4 for initial
 
-EPOCHS = 80 # use 20 for initial
+EPOCHS = 50 # use 20 for initial
 
 SAMPLE_SIZE = 10000 # use 1000 for initial
 
@@ -1338,7 +1338,7 @@ def run_initial_experiment(
 
     best_model_path = (
         MODEL_DIR
-        / f"{experiment_name}_best.pth"
+        / f"{experiment_name}_34_33_33_best.pth" 
     )
 
     # --------------------------------------------------------
@@ -1619,7 +1619,7 @@ def run_initial_experiment(
 
     history_path = (
         METRICS_DIR
-        / f"{experiment_name}_training_history.csv"
+        / f"{experiment_name}_34_33_33_training_history.csv"
     )
 
     history_df.to_csv(
@@ -1633,7 +1633,7 @@ def run_initial_experiment(
 
     plot_path = (
         VISUALIZATION_DIR
-        / f"{experiment_name}_training_curves.png"
+        / f"{experiment_name}_34_33_33_training_curves.png"
     )
 
     plot_training_history(
@@ -1725,7 +1725,7 @@ def run_initial_experiment(
 
     summary_path = (
         METRICS_DIR
-        / f"{experiment_name}_training_summary.csv"
+        / f"{experiment_name}_34_33_33_training_summary.csv"
     )
 
     summary_df.to_csv(
