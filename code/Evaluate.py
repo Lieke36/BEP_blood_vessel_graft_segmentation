@@ -723,11 +723,11 @@ if __name__ == "__main__":
     )
 
     OUTPUT_PATH = Path(
-        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/evaluation/n10000_bs8_ep50_10_80_10"
+        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/evaluation/n10000_bs8_ep50_5_70_25"
     )
 
     MODEL_PATH = Path(
-        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/models/n10000_bs8_ep50_10_80_10_best.pth"
+        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/models/n10000_bs8_ep50_5_70_25_best.pth"
     )
     for slide in slide_id_list:
         for patch in patch_nr_list:
