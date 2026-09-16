@@ -714,7 +714,7 @@ def download_predicted_mask(
 # val_slide_id_list = [9943, 10535]
 
 slide_id_list = [9943]
-patch_nr_list = [104, 126]
+patch_nr_list = [0, 104, 113, 126, 127]
 
 if __name__ == "__main__":
 
@@ -723,11 +723,11 @@ if __name__ == "__main__":
     )
 
     OUTPUT_PATH = Path(
-        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/evaluation"
+        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/evaluation/n10000_bs8_ep50"
     )
 
     MODEL_PATH = Path(
-        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/models/n10000_bs16_ep50_best.pth"
+        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/models/n10000_bs8_ep50_best.pth"
     )
     for slide in slide_id_list:
         for patch in patch_nr_list:
