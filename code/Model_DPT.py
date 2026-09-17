@@ -91,7 +91,7 @@ def get_device():
 # ============================================================
 
 class SegmentationDataset(Dataset):
-    def __init__(self, image_paths, mask_paths, img_size=518):
+    def __init__(self, image_paths, mask_paths, img_size=504):
         if len(image_paths) != len(mask_paths):
             raise ValueError("Number of images and masks do not match.")
         self.image_paths = list(image_paths)
@@ -326,7 +326,7 @@ def run_initial_experiment(
     experiment_start = time.time()
 
     print("=" * 70)
-    print("STARTING DPT EXPERIMENT (RESIZED 518x518 INPUT)")
+    print("STARTING DPT EXPERIMENT (RESIZED 504x504 INPUT)")
     print("=" * 70)
 
     for epoch in range(1, epochs + 1):
