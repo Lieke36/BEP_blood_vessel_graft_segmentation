@@ -2,7 +2,7 @@
 
 
 # ============================================================
-# Libraries
+# Model_DPT.py - DINOv2 Patch-14 Implementation
 # ============================================================
 
 from pathlib import Path
@@ -30,25 +30,19 @@ from Losses_metrics import (
 # Configuration
 # ============================================================
 
-TRAIN_DIR = Path(
-    r"/home/20234257/BEP_Project/External_data/training"
-)
-
-VALIDATION_DIR = Path(
-    r"/home/20234257/BEP_Project/External_data/validation"
-)
-
-RESULTS_DIR = Path(
-    r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results"
-)
+TRAIN_DIR = Path(r"/home/20234257/BEP_Project/External_data/training")
+VALIDATION_DIR = Path(r"/home/20234257/BEP_Project/External_data/validation")
+RESULTS_DIR = Path(r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results")
 
 MODEL_DIR = RESULTS_DIR / "models"
 METRICS_DIR = RESULTS_DIR / "metrics"
 VISUALIZATION_DIR = RESULTS_DIR / "visualizations"
 
+# DINOv2 Patch-14 Configuration
 ENCODER = "tu-vit_small_patch14_dinov2.lvd142m"
 ENCODER_WEIGHTS = True
 CLASSES = 1
+IMG_SIZE = 504  # 504 / 14 = 36 patches (even spatial grid)
 
 BATCH_SIZE = 8
 EPOCHS = 50
@@ -87,11 +81,11 @@ def get_device():
 
 
 # ============================================================
-# Dataset (Keeps native 512x512 resolution)
+# Dataset
 # ============================================================
 
 class SegmentationDataset(Dataset):
-    def __init__(self, image_paths, mask_paths, img_size=504):
+    def __init__(self, image_paths, mask_paths, img_size=IMG_SIZE):
         if len(image_paths) != len(mask_paths):
             raise ValueError("Number of images and masks do not match.")
         self.image_paths = list(image_paths)
@@ -105,7 +99,7 @@ class SegmentationDataset(Dataset):
         image = Image.open(self.image_paths[index]).convert("RGB")
         mask = Image.open(self.mask_paths[index]).convert("L")
 
-        # Explicitly enforce 518x518
+        # Resize to 504x504 for DINOv2 Patch-14 alignment
         image = image.resize((self.img_size, self.img_size), resample=Image.Resampling.BILINEAR)
         mask = mask.resize((self.img_size, self.img_size), resample=Image.Resampling.NEAREST)
 
@@ -149,27 +143,24 @@ def find_pairs(directory, sample_size=None, seed=42):
 
 
 def create_model(encoder_name=ENCODER, encoder_weights=ENCODER_WEIGHTS):
-    """
-    Creates the DPT model with dynamic padding enabled in timm.
-    This allows 512x512 patches to process through patch-14 ViTs.
-    """
     model = smp.DPT(
         encoder_name=encoder_name,
         encoder_weights=encoder_weights,
         classes=CLASSES,
         activation=None,
+        encoder_params=dict(dynamic_img_size=True),
     )
     return model
 
 
-
-def create_dataloaders(train_dataset, validation_dataset, batch_size, num_workers=0):
+def create_dataloaders(train_dataset, validation_dataset, batch_size, num_workers=NUM_WORKERS):
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
         pin_memory=(torch.cuda.is_available() and PIN_MEMORY),
+        persistent_workers=(num_workers > 0),
     )
     validation_loader = DataLoader(
         validation_dataset,
@@ -177,6 +168,7 @@ def create_dataloaders(train_dataset, validation_dataset, batch_size, num_worker
         shuffle=False,
         num_workers=num_workers,
         pin_memory=(torch.cuda.is_available() and PIN_MEMORY),
+        persistent_workers=(num_workers > 0),
     )
     return train_loader, validation_loader
 
@@ -185,9 +177,10 @@ def create_dataloaders(train_dataset, validation_dataset, batch_size, num_worker
 # Training Logic
 # ============================================================
 
-def train_one_epoch(model, loader, optimizer, criterion, device):
+def train_one_epoch(model, loader, optimizer, criterion, device, threshold=0.5):
     model.train()
     running_loss, total_samples = 0.0, 0
+    dice_vals = []
 
     for images, masks in loader:
         images = images.to(device, non_blocking=True)
@@ -203,7 +196,11 @@ def train_one_epoch(model, loader, optimizer, criterion, device):
         running_loss += loss.item() * current_batch_size
         total_samples += current_batch_size
 
-    return running_loss / total_samples
+        with torch.no_grad():
+            metrics = calculate_metrics(logits, masks, threshold=threshold)
+            dice_vals.append(metrics["dice"])
+
+    return running_loss / total_samples, float(np.mean(dice_vals))
 
 
 def validate_one_epoch(model, loader, criterion, device, threshold=0.5):
@@ -236,32 +233,19 @@ def validate_one_epoch(model, loader, criterion, device, threshold=0.5):
     }
 
 
-def evaluate_training_dice(model, loader, device, threshold=0.5):
-    model.eval()
-    dice_vals = []
-    with torch.no_grad():
-        for images, masks in loader:
-            images = images.to(device, non_blocking=True)
-            masks = masks.to(device, non_blocking=True)
-            logits = model(images)
-            metrics = calculate_metrics(logits, masks, threshold=threshold)
-            dice_vals.append(metrics["dice"])
-    return float(np.mean(dice_vals))
-
-
 def plot_training_history(history, output_path):
     epochs = history["epoch"]
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
     axes[0].plot(epochs, history["train_loss"], marker="o", label="Training loss")
     axes[0].plot(epochs, history["val_loss"], marker="o", label="Validation loss")
-    axes[0].set_title("Training and Validation Loss (DPT)")
+    axes[0].set_title("Training and Validation Loss (DPT DINOv2)")
     axes[0].legend()
     axes[0].grid(alpha=0.3)
 
     axes[1].plot(epochs, history["train_dice"], marker="o", label="Training Dice")
     axes[1].plot(epochs, history["val_dice"], marker="o", label="Validation Dice")
-    axes[1].set_title("Training and Validation Dice (DPT)")
+    axes[1].set_title("Training and Validation Dice (DPT DINOv2)")
     axes[1].set_ylim(0, 1)
     axes[1].legend()
     axes[1].grid(alpha=0.3)
@@ -326,14 +310,15 @@ def run_initial_experiment(
     experiment_start = time.time()
 
     print("=" * 70)
-    print("STARTING DPT EXPERIMENT (RESIZED 504x504 INPUT)")
+    print("STARTING DPT EXPERIMENT (DINOv2 PATCH-14 @ 504x504)")
     print("=" * 70)
 
     for epoch in range(1, epochs + 1):
         epoch_start = time.time()
 
-        train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
-        train_dice = evaluate_training_dice(model, train_loader, device, threshold=threshold)
+        train_loss, train_dice = train_one_epoch(
+            model, train_loader, optimizer, criterion, device, threshold=threshold
+        )
 
         val_results = validate_one_epoch(
             model, validation_loader, criterion, device, threshold=threshold
