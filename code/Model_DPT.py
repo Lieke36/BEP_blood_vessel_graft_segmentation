@@ -91,13 +91,12 @@ def get_device():
 # ============================================================
 
 class SegmentationDataset(Dataset):
-    def __init__(self, image_paths, mask_paths):
+    def __init__(self, image_paths, mask_paths, img_size=518):
         if len(image_paths) != len(mask_paths):
             raise ValueError("Number of images and masks do not match.")
         self.image_paths = list(image_paths)
         self.mask_paths = list(mask_paths)
-        if len(self.image_paths) == 0:
-            raise ValueError("Dataset contains no images.")
+        self.img_size = img_size
 
     def __len__(self):
         return len(self.image_paths)
@@ -106,9 +105,9 @@ class SegmentationDataset(Dataset):
         image = Image.open(self.image_paths[index]).convert("RGB")
         mask = Image.open(self.mask_paths[index]).convert("L")
 
-        # Resize to 518x518 so dimensions are divisible by 14 (518 / 14 = 37)
-        image = image.resize((518, 518), resample=Image.Resampling.BILINEAR)
-        mask = mask.resize((518, 518), resample=Image.Resampling.NEAREST)
+        # Explicitly enforce 518x518
+        image = image.resize((self.img_size, self.img_size), resample=Image.Resampling.BILINEAR)
+        mask = mask.resize((self.img_size, self.img_size), resample=Image.Resampling.NEAREST)
 
         image = np.asarray(image, dtype=np.float32)
         mask = np.asarray(mask, dtype=np.uint8)
@@ -326,8 +325,8 @@ def run_initial_experiment(
     best_model_path = MODEL_DIR / f"{experiment_name}_DPT_best.pth"
     experiment_start = time.time()
 
-    print("\n" + "=" * 70)
-    print("STARTING DPT EXPERIMENT (NATIVE 512x512 INPUT)")
+    print("=" * 70)
+    print("STARTING DPT EXPERIMENT (RESIZED 518x518 INPUT)")
     print("=" * 70)
 
     for epoch in range(1, epochs + 1):
