@@ -143,13 +143,19 @@ def find_pairs(directory, sample_size=None, seed=42):
 
 
 def create_model(encoder_name=ENCODER, encoder_weights=ENCODER_WEIGHTS):
+    # 1. Instantiate smp.DPT normally
     model = smp.DPT(
         encoder_name=encoder_name,
         encoder_weights=encoder_weights,
         classes=CLASSES,
         activation=None,
-        encoder_params=dict(dynamic_img_size=True),
     )
+    
+    # 2. Set dynamic image size directly on the underlying timm ViT backbone
+    # This prevents position embedding size mismatches during the forward pass at 504x504
+    if hasattr(model.encoder.model, "dynamic_img_size"):
+        model.encoder.model.dynamic_img_size = True
+        
     return model
 
 
