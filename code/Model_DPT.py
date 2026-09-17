@@ -161,7 +161,6 @@ def create_model(encoder_name=ENCODER, encoder_weights=ENCODER_WEIGHTS):
         encoder_weights=encoder_weights,
         classes=CLASSES,
         activation=None,
-        encoder_params=dict(dynamic_img_pad=True),
     )
     return model
 
