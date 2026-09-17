@@ -94,10 +94,8 @@ class SegmentationDataset(Dataset):
     def __init__(self, image_paths, mask_paths):
         if len(image_paths) != len(mask_paths):
             raise ValueError("Number of images and masks do not match.")
-
         self.image_paths = list(image_paths)
         self.mask_paths = list(mask_paths)
-
         if len(self.image_paths) == 0:
             raise ValueError("Dataset contains no images.")
 
@@ -105,21 +103,21 @@ class SegmentationDataset(Dataset):
         return len(self.image_paths)
 
     def __getitem__(self, index):
-        image_path = self.image_paths[index]
-        mask_path = self.mask_paths[index]
+        image = Image.open(self.image_paths[index]).convert("RGB")
+        mask = Image.open(self.mask_paths[index]).convert("L")
 
-        image = Image.open(image_path).convert("RGB")
-        mask = Image.open(mask_path).convert("L")
+        # Resize to 518x518 so dimensions are divisible by 14 (518 / 14 = 37)
+        image = image.resize((518, 518), resample=Image.Resampling.BILINEAR)
+        mask = mask.resize((518, 518), resample=Image.Resampling.NEAREST)
 
         image = np.asarray(image, dtype=np.float32)
         mask = np.asarray(mask, dtype=np.uint8)
-
         mask = (mask > 0).astype(np.float32)
+
         image = image.transpose(2, 0, 1) / 255.0
 
         mean = np.array([0.485, 0.456, 0.406], dtype=np.float32).reshape(3, 1, 1)
         std = np.array([0.229, 0.224, 0.225], dtype=np.float32).reshape(3, 1, 1)
-
         image = (image - mean) / std
 
         image = torch.from_numpy(image).float()
