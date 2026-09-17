@@ -165,6 +165,7 @@ def create_model(encoder_name=ENCODER, encoder_weights=ENCODER_WEIGHTS):
     return model
 
 
+
 def create_dataloaders(train_dataset, validation_dataset, batch_size, num_workers=0):
     train_loader = DataLoader(
         train_dataset,
