@@ -1,0 +1,2 @@
+encoder,sample_size,validation_size,batch_size,epochs,learning_rate,best_epoch,best_val_dice,best_val_loss,total_runtime_seconds
+resnet50,10000,2900,8,50,0.0001,36,0.8364197539765973,0.7162724849787252,29038.429102897644
