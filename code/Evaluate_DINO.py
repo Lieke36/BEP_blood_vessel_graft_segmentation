@@ -689,11 +689,11 @@ if __name__ == "__main__":
     )
 
     OUTPUT_PATH = Path(
-        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/evaluation/dino_resnet50_n10000_bs8_ep50"
+        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/evaluation/dino_resnet50_n10000_bs8_ep50_34_33_33"
     )
 
     MODEL_PATH = Path(
-        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/models/dino_resnet50_n10000_bs8_ep50_DINO_best.pth"
+        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/models/dino_resnet50_n10000_bs8_ep50_34_33_33_DINO_best.pth"
     )
 
     for slide in slide_id_list:
