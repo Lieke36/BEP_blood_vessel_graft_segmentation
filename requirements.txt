@@ -6,5 +6,6 @@ numpy
 matplotlib
 torch
 torchvision
+timm
 segmentation-models-pytorch
 scipy

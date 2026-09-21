@@ -2,7 +2,7 @@
 
 
 # ============================================================
-# Model_DPT.py - DINOv2 Patch-14 Implementation
+# Model_DPT.py - Custom ViT-DPT Implementation (Option 1: 512x512)
 # ============================================================
 
 from pathlib import Path
@@ -16,9 +16,11 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
-import segmentation_models_pytorch as smp
+import timm
 
 from Losses_metrics import (
     BCEDiceLoss,
@@ -38,11 +40,11 @@ MODEL_DIR = RESULTS_DIR / "models"
 METRICS_DIR = RESULTS_DIR / "metrics"
 VISUALIZATION_DIR = RESULTS_DIR / "visualizations"
 
-# DINOv2 Patch-14 Configuration
-ENCODER = "tu-vit_small_patch14_dinov2.lvd142m"
+# Custom ViT-DPT Configuration
+ENCODER = "vit_small_patch14_dinov2.lvd142m"
 ENCODER_WEIGHTS = True
 CLASSES = 1
-IMG_SIZE = 504  # 504 / 14 = 36 patches (even spatial grid)
+IMG_SIZE = 512  # Native 512x512 input size (automatically padded to 532x532 internally)
 
 BATCH_SIZE = 8
 EPOCHS = 50
@@ -54,6 +56,91 @@ THRESHOLD = 0.5
 NUM_WORKERS = 4
 PIN_MEMORY = True
 RANDOM_SEED = 42
+
+
+# ============================================================
+# Model Architecture (Custom ViT-DPT)
+# ============================================================
+
+class CustomViTDPT(nn.Module):
+    """
+    DPT architecture with dynamic reflection padding for ViT backbones (DINOv2).
+    Pads 512x512 inputs to 532x532 internally for 14px patch division, then
+    crops the output mask back to exact 512x512 dimensions.
+    """
+    def __init__(self, encoder_name=ENCODER, out_channels=CLASSES, pretrained=ENCODER_WEIGHTS):
+        super().__init__()
+        
+        # Load timm ViT backbone with dynamic image size support
+        model_key = encoder_name.replace("tu-", "")
+        self.encoder = timm.create_model(
+            model_key,
+            pretrained=pretrained,
+            dynamic_img_size=True,
+            features_only=False
+        )
+        
+        embed_dim = self.encoder.embed_dim  # 384 for ViT-Small
+        
+        # 1x1 Convolutions to project token channels from embed_dim -> 256
+        self.proj1 = nn.Sequential(nn.Conv2d(embed_dim, 256, kernel_size=1), nn.BatchNorm2d(256), nn.GELU())
+        self.proj2 = nn.Sequential(nn.Conv2d(embed_dim, 256, kernel_size=1), nn.BatchNorm2d(256), nn.GELU())
+        self.proj3 = nn.Sequential(nn.Conv2d(embed_dim, 256, kernel_size=1), nn.BatchNorm2d(256), nn.GELU())
+        self.proj4 = nn.Sequential(nn.Conv2d(embed_dim, 256, kernel_size=1), nn.BatchNorm2d(256), nn.GELU())
+        
+        # Decoder Refinement Block
+        self.decoder = nn.Sequential(
+            nn.Conv2d(256 * 4, 256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.GELU(),
+            nn.Conv2d(256, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.GELU(),
+            nn.Conv2d(128, out_channels, kernel_size=1)
+        )
+
+    def forward(self, x):
+        orig_H, orig_W = x.shape[-2:]  # (512, 512)
+        
+        # Reflection padding for 14px patch division (512 -> 532)
+        pad_h = (14 - (orig_H % 14)) % 14
+        pad_w = (14 - (orig_W % 14)) % 14
+        
+        if pad_h > 0 or pad_w > 0:
+            x = F.pad(x, (0, pad_w, 0, pad_h), mode="reflect")
+            
+        padded_H, padded_W = x.shape[-2:]
+        
+        # Extract intermediate transformer feature layers [3, 5, 7, 11]
+        intermediates = self.encoder.get_intermediate_layers(x, n=[3, 5, 7, 11], reshape=True)
+        f1, f2, f3, f4 = intermediates
+        
+        # Channel projections
+        p1 = self.proj1(f1)
+        p2 = self.proj2(f2)
+        p3 = self.proj3(f3)
+        p4 = self.proj4(f4)
+        
+        # Target feature map size (H/4, W/4)
+        target_stage_size = (padded_H // 4, padded_W // 4)
+        
+        p1 = F.interpolate(p1, size=target_stage_size, mode="bilinear", align_corners=False)
+        p2 = F.interpolate(p2, size=target_stage_size, mode="bilinear", align_corners=False)
+        p3 = F.interpolate(p3, size=target_stage_size, mode="bilinear", align_corners=False)
+        p4 = F.interpolate(p4, size=target_stage_size, mode="bilinear", align_corners=False)
+        
+        # Concatenation and decoding
+        fused = torch.cat([p1, p2, p3, p4], dim=1)
+        decoded = self.decoder(fused)
+        
+        # Upsample back to padded input size
+        out = F.interpolate(decoded, size=(padded_H, padded_W), mode="bilinear", align_corners=False)
+        
+        # Crop back to exact original input resolution (512, 512)
+        if pad_h > 0 or pad_w > 0:
+            out = out[:, :, :orig_H, :orig_W]
+            
+        return out
 
 
 # ============================================================
@@ -99,7 +186,7 @@ class SegmentationDataset(Dataset):
         image = Image.open(self.image_paths[index]).convert("RGB")
         mask = Image.open(self.mask_paths[index]).convert("L")
 
-        # Resize to 504x504 for DINOv2 Patch-14 alignment
+        # Resize to native 512x512 resolution
         image = image.resize((self.img_size, self.img_size), resample=Image.Resampling.BILINEAR)
         mask = mask.resize((self.img_size, self.img_size), resample=Image.Resampling.NEAREST)
 
@@ -143,19 +230,11 @@ def find_pairs(directory, sample_size=None, seed=42):
 
 
 def create_model(encoder_name=ENCODER, encoder_weights=ENCODER_WEIGHTS):
-    # 1. Instantiate smp.DPT normally
-    model = smp.DPT(
+    model = CustomViTDPT(
         encoder_name=encoder_name,
-        encoder_weights=encoder_weights,
-        classes=CLASSES,
-        activation=None,
+        out_channels=CLASSES,
+        pretrained=encoder_weights
     )
-    
-    # 2. Set dynamic image size directly on the underlying timm ViT backbone
-    # This prevents position embedding size mismatches during the forward pass at 504x504
-    if hasattr(model.encoder.model, "dynamic_img_size"):
-        model.encoder.model.dynamic_img_size = True
-        
     return model
 
 
@@ -245,13 +324,13 @@ def plot_training_history(history, output_path):
 
     axes[0].plot(epochs, history["train_loss"], marker="o", label="Training loss")
     axes[0].plot(epochs, history["val_loss"], marker="o", label="Validation loss")
-    axes[0].set_title("Training and Validation Loss (DPT DINOv2)")
+    axes[0].set_title("Training and Validation Loss (Custom ViT-DPT)")
     axes[0].legend()
     axes[0].grid(alpha=0.3)
 
     axes[1].plot(epochs, history["train_dice"], marker="o", label="Training Dice")
     axes[1].plot(epochs, history["val_dice"], marker="o", label="Validation Dice")
-    axes[1].set_title("Training and Validation Dice (DPT DINOv2)")
+    axes[1].set_title("Training and Validation Dice (Custom ViT-DPT)")
     axes[1].set_ylim(0, 1)
     axes[1].legend()
     axes[1].grid(alpha=0.3)
@@ -316,7 +395,7 @@ def run_initial_experiment(
     experiment_start = time.time()
 
     print("=" * 70)
-    print("STARTING DPT EXPERIMENT (DINOv2 PATCH-14 @ 504x504)")
+    print("STARTING DPT EXPERIMENT (CUSTOM ViT-DPT DINOv2 @ 512x512)")
     print("=" * 70)
 
     for epoch in range(1, epochs + 1):
