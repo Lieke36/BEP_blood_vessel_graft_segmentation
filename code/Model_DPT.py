@@ -32,7 +32,7 @@ from Losses_metrics import (
 # Configuration
 # ============================================================
 
-TRAIN_DIR = Path(r"/home/20234257/BEP_Project/External_data/training")
+TRAIN_DIR = Path(r"/home/20234257/BEP_Project/External_data/training_34_33_33")
 VALIDATION_DIR = Path(r"/home/20234257/BEP_Project/External_data/validation")
 RESULTS_DIR = Path(r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results")
 
@@ -391,7 +391,7 @@ def run_initial_experiment(
 
     best_validation_dice = -1.0
     best_epoch = None
-    best_model_path = MODEL_DIR / f"{experiment_name}_DPT_best.pth"
+    best_model_path = MODEL_DIR / f"{experiment_name}_34_33_33_DPT_best.pth"
     experiment_start = time.time()
 
     print("=" * 70)
@@ -446,10 +446,10 @@ def run_initial_experiment(
     total_runtime = time.time() - experiment_start
 
     history_df = pd.DataFrame(history)
-    history_path = METRICS_DIR / f"{experiment_name}_DPT_training_history.csv"
+    history_path = METRICS_DIR / f"{experiment_name}_34_33_33_DPT_training_history.csv"
     history_df.to_csv(history_path, index=False)
 
-    plot_path = VISUALIZATION_DIR / f"{experiment_name}_DPT_training_curves.png"
+    plot_path = VISUALIZATION_DIR / f"{experiment_name}_34_33_33_DPT_training_curves.png"
     plot_training_history(history, plot_path)
 
     best_row = history_df.loc[history_df["val_dice"].idxmax()]
@@ -472,7 +472,7 @@ def run_initial_experiment(
     }
 
     summary_df = pd.DataFrame([summary])
-    summary_path = METRICS_DIR / f"{experiment_name}_DPT_training_summary.csv"
+    summary_path = METRICS_DIR / f"{experiment_name}_34_33_33_DPT_training_summary.csv"
     summary_df.to_csv(summary_path, index=False)
 
     print("\n" + "=" * 70)
