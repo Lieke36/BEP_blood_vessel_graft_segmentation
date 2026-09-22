@@ -36,6 +36,7 @@
 from pathlib import Path
 import random
 import time
+import re
 
 import numpy as np
 import pandas as pd
@@ -63,7 +64,7 @@ from Losses_metrics import (
 # ------------------------------------------------------------
 
 TRAIN_DIR = Path(
-    r"/home/20234257/BEP_Project/External_data/training_10_80_10"
+    r"/home/20234257/BEP_Project/External_data/training_10_80_10" # CHANGE #
 )
 
 VALIDATION_DIR = Path(
@@ -71,7 +72,7 @@ VALIDATION_DIR = Path(
 )
 
 RESULTS_DIR = Path(
-    r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results" 
+    r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full" 
 )
 
 MODEL_DIR = (
@@ -657,6 +658,48 @@ def find_validation_pairs(
 
 
 # ============================================================
+# Extract slide ID from validation filename
+# ============================================================
+
+def extract_slide_id(
+    image_path
+):
+    """
+    Extracts the slide ID from a validation patch filename.
+
+    Expected format: image_{slide_id}_patch_{patch_nr}_tissue.png
+
+    Example: image_123_patch_47_tissue.png
+
+    returns: "123"
+    """
+
+    filename = Path(
+        image_path
+    ).name
+
+    pattern = (
+        r"^image_(.+?)_patch_\d+_tissue\.png$"
+    )
+
+    match = re.match(
+        pattern,
+        filename,
+    )
+
+    if match is None:
+
+        raise ValueError(
+            "Could not extract slide ID from filename:\n"
+            f"{filename}\n\n"
+            "Expected format:\n"
+            "image_{slide_id}_patch_{patch_nr}_tissue.png"
+        )
+
+    return match.group(1)
+
+
+# ============================================================
 # Create model
 # ============================================================
 
@@ -1014,6 +1057,249 @@ def evaluate_training_dice(
 
 
 # ============================================================
+# Evaluate validation metrics per slide
+# ============================================================
+
+def evaluate_validation_by_slide(
+    model,
+    image_paths,
+    mask_paths,
+    criterion,
+    device,
+    threshold=0.5,
+):
+    """
+    Calculates validation metrics separately for every slide.
+
+    Each validation patch belongs to a slide based on its
+    filename:
+
+        image_{slide_id}_patch_{patch_nr}_tissue.png
+
+    Metrics are calculated for every patch and then averaged
+    within each slide.
+
+    Returns
+    -------
+    pandas.DataFrame
+
+        Columns:
+
+            slide_id
+            number_of_patches
+            loss
+            dice
+            sensitivity
+            precision
+    """
+
+    if len(image_paths) != len(mask_paths):
+
+        raise ValueError(
+            "Number of images and masks do not match."
+        )
+
+    # --------------------------------------------------------
+    # Group validation patches by slide
+    # --------------------------------------------------------
+
+    slide_data = {}
+
+    for image_path, mask_path in zip(
+        image_paths,
+        mask_paths,
+    ):
+
+        slide_id = extract_slide_id(
+            image_path
+        )
+
+        # ----------------------------------------------------
+        # Optional slide filtering
+        # ----------------------------------------------------
+
+        if slide_id not in slide_data:
+
+            slide_data[slide_id] = {
+                "image_paths": [],
+                "mask_paths": [],
+            }
+
+        slide_data[slide_id][
+            "image_paths"
+        ].append(
+            image_path
+        )
+
+        slide_data[slide_id][
+            "mask_paths"
+        ].append(
+            mask_path
+        )
+
+    if len(slide_data) == 0:
+
+        raise RuntimeError(
+            "No validation slides found for "
+            "the requested slide_id_list."
+        )
+
+    # --------------------------------------------------------
+    # Evaluate each slide
+    # --------------------------------------------------------
+
+    results = []
+
+    model.eval()
+
+    with torch.no_grad():
+
+        for slide_id in sorted(
+            slide_data.keys()
+        ):
+
+            slide_image_paths = (
+                slide_data[slide_id][
+                    "image_paths"
+                ]
+            )
+
+            slide_mask_paths = (
+                slide_data[slide_id][
+                    "mask_paths"
+                ]
+            )
+
+            slide_dataset = SegmentationDataset(
+                slide_image_paths,
+                slide_mask_paths,
+            )
+
+            slide_loader = DataLoader(
+                slide_dataset,
+                batch_size=BATCH_SIZE,
+                shuffle=False,
+                num_workers=NUM_WORKERS,
+                pin_memory=(
+                    torch.cuda.is_available()
+                    and PIN_MEMORY
+                ),
+            )
+
+            slide_loss_values = []
+
+            slide_dice_values = []
+
+            slide_sensitivity_values = []
+
+            slide_precision_values = []
+
+            # ------------------------------------------------
+            # Evaluate all patches of this slide
+            # ------------------------------------------------
+
+            for images, masks in slide_loader:
+
+                images = images.to(
+                    device,
+                    non_blocking=True,
+                )
+
+                masks = masks.to(
+                    device,
+                    non_blocking=True,
+                )
+
+                logits = model(
+                    images
+                )
+
+                # --------------------------------------------
+                # Loss
+                # --------------------------------------------
+
+                loss = criterion(
+                    logits,
+                    masks
+                )
+
+                # --------------------------------------------
+                # Metrics
+                # --------------------------------------------
+
+                metrics = calculate_metrics(
+                    logits,
+                    masks,
+                    threshold=threshold,
+                )
+
+                # --------------------------------------------
+                # Store batch metric
+                # --------------------------------------------
+
+                slide_loss_values.append(
+                    loss.item()
+                )
+
+                slide_dice_values.append(
+                    metrics["dice"]
+                )
+
+                slide_sensitivity_values.append(
+                    metrics["sensitivity"]
+                )
+
+                slide_precision_values.append(
+                    metrics["precision"]
+                )
+
+            # ------------------------------------------------
+            # Store slide results
+            # ------------------------------------------------
+
+            results.append(
+                {
+                    "slide_id": slide_id,
+
+                    "number_of_patches":
+                        len(slide_dataset),
+
+                    "loss":
+                        float(
+                            np.mean(
+                                slide_loss_values
+                            )
+                        ),
+
+                    "dice":
+                        float(
+                            np.mean(
+                                slide_dice_values
+                            )
+                        ),
+
+                    "sensitivity":
+                        float(
+                            np.mean(
+                                slide_sensitivity_values
+                            )
+                        ),
+
+                    "precision":
+                        float(
+                            np.mean(
+                                slide_precision_values
+                            )
+                        ),
+                }
+            )
+
+    return pd.DataFrame(
+        results
+    )
+
+
+# ============================================================
 # Save training curves
 # ============================================================
 
@@ -1338,7 +1624,7 @@ def run_initial_experiment(
 
     best_model_path = (
         MODEL_DIR
-        / f"{experiment_name}_10_80_10_best.pth" 
+        / f"{experiment_name}_10_80_10_best.pth" # CHANGE #
     )
 
     # --------------------------------------------------------
@@ -1619,7 +1905,7 @@ def run_initial_experiment(
 
     history_path = (
         METRICS_DIR
-        / f"{experiment_name}_10_80_10_training_history.csv"
+        / f"{experiment_name}_10_80_10_training_history.csv" # CHANGE #
     )
 
     history_df.to_csv(
@@ -1633,7 +1919,7 @@ def run_initial_experiment(
 
     plot_path = (
         VISUALIZATION_DIR
-        / f"{experiment_name}_10_80_10_training_curves.png"
+        / f"{experiment_name}_10_80_10_training_curves.png" # CHANGE #
     )
 
     plot_training_history(
@@ -1651,6 +1937,67 @@ def run_initial_experiment(
 
     best_row = (
         history_df.loc[best_index]
+    )
+
+    # --------------------------------------------------------
+    # Load best model
+    # --------------------------------------------------------
+
+    print(
+        "\nLoading best model for "
+        "slide-level evaluation..."
+    )
+
+    best_checkpoint = torch.load(
+        best_model_path,
+        map_location=device,
+    )
+
+    model.load_state_dict(
+        best_checkpoint[
+            "model_state_dict"
+        ]
+    )
+
+    model = model.to(
+        device
+    )
+
+    # --------------------------------------------------------
+    # Calculate validation metrics per slide
+    # --------------------------------------------------------
+
+    slide_summary_df = (
+        evaluate_validation_by_slide(
+            model=model,
+
+            image_paths=val_image_paths,
+
+            mask_paths=val_mask_paths,
+
+            criterion=criterion,
+
+            device=device,
+
+            batch_size=batch_size,
+
+            threshold=threshold,
+        )
+    )
+
+    # --------------------------------------------------------
+    # Save slide-level summary
+    # --------------------------------------------------------
+
+    slide_summary_path = (
+        METRICS_DIR
+        / f"{experiment_name}"
+        f"_10_80_10_training_summary_slides.csv" # CHANGE #
+    )
+
+    slide_summary_df.to_csv(
+        slide_summary_path,
+        index=False,
     )
 
     # --------------------------------------------------------
@@ -1725,7 +2072,7 @@ def run_initial_experiment(
 
     summary_path = (
         METRICS_DIR
-        / f"{experiment_name}_10_80_10_training_summary.csv"
+        / f"{experiment_name}_10_80_10_training_summary.csv" # CHANGE #
     )
 
     summary_df.to_csv(

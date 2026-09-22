@@ -8,6 +8,7 @@
 from pathlib import Path
 import random
 import time
+import re
 
 import numpy as np
 import pandas as pd
@@ -32,9 +33,9 @@ from Losses_metrics import (
 # Configuration
 # ============================================================
 
-TRAIN_DIR = Path(r"/home/20234257/BEP_Project/External_data/training_34_33_33")
+TRAIN_DIR = Path(r"/home/20234257/BEP_Project/External_data/training_34_33_33") # CHANGE #
 VALIDATION_DIR = Path(r"/home/20234257/BEP_Project/External_data/validation")
-RESULTS_DIR = Path(r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results")
+RESULTS_DIR = Path(r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full")
 
 MODEL_DIR = RESULTS_DIR / "models"
 METRICS_DIR = RESULTS_DIR / "metrics"
@@ -229,6 +230,24 @@ def find_pairs(directory, sample_size=None, seed=42):
     return image_paths, mask_paths
 
 
+def extract_slide_id(image_path):
+    filename = Path(image_path).name
+
+    pattern = r"^image_(.+?)_patch_\d+_tissue\.png$"
+
+    match = re.match(pattern, filename)
+
+    if match is None:
+        raise ValueError(
+            "Could not extract slide ID from filename:\n"
+            f"{filename}\n\n"
+            "Expected format:\n"
+            "image_{slide_id}_patch_{patch_nr}_tissue.png"
+        )
+
+    return match.group(1)
+
+
 def create_model(encoder_name=ENCODER, encoder_weights=ENCODER_WEIGHTS):
     model = CustomViTDPT(
         encoder_name=encoder_name,
@@ -257,6 +276,114 @@ def create_dataloaders(train_dataset, validation_dataset, batch_size, num_worker
     )
     return train_loader, validation_loader
 
+
+def evaluate_validation_by_slide(
+    model,
+    image_paths,
+    mask_paths,
+    criterion,
+    device,
+    batch_size,
+    threshold=0.5,
+):
+    slide_data = {}
+
+    for image_path, mask_path in zip(
+        image_paths,
+        mask_paths,
+    ):
+        slide_id = extract_slide_id(image_path)
+
+        if slide_id not in slide_data:
+            slide_data[slide_id] = []
+
+        slide_data[slide_id].append(
+            (image_path, mask_path)
+        )
+
+    results = []
+
+    model.eval()
+
+    with torch.no_grad():
+
+        for slide_id in sorted(slide_data):
+
+            pairs = slide_data[slide_id]
+
+            slide_images = [
+                pair[0]
+                for pair in pairs
+            ]
+
+            slide_masks = [
+                pair[1]
+                for pair in pairs
+            ]
+
+            dataset = SegmentationDataset(
+                slide_images,
+                slide_masks,
+            )
+
+            loader = DataLoader(
+                dataset,
+                batch_size=batch_size,
+                shuffle=False,
+                num_workers=NUM_WORKERS,
+                pin_memory=(
+                    torch.cuda.is_available()
+                    and PIN_MEMORY
+                ),
+                persistent_workers=(
+                    NUM_WORKERS > 0
+                ),
+            )
+
+            losses = []
+            dices = []
+            sensitivities = []
+            precisions = []
+
+            for images, masks in loader:
+
+                images = images.to(device, non_blocking=True,)
+
+                masks = masks.to(device, non_blocking=True,)
+
+                logits = model(images)
+
+                loss = criterion(logits, masks,)
+
+                metrics = calculate_metrics(
+                    logits,
+                    masks,
+                    threshold=threshold,
+                )
+
+                losses.append(loss.item())
+                dices.append(metrics["dice"])
+                sensitivities.append(
+                    metrics["sensitivity"]
+                )
+                precisions.append(
+                    metrics["precision"]
+                )
+
+            results.append({
+                "slide_id": slide_id,
+                "number_of_patches": len(dataset),
+                "loss": float(np.mean(losses)),
+                "dice": float(np.mean(dices)),
+                "sensitivity": float(
+                    np.mean(sensitivities)
+                ),
+                "precision": float(
+                    np.mean(precisions)
+                ),
+            })
+
+    return pd.DataFrame(results)
 
 # ============================================================
 # Training Logic
@@ -391,7 +518,7 @@ def run_initial_experiment(
 
     best_validation_dice = -1.0
     best_epoch = None
-    best_model_path = MODEL_DIR / f"{experiment_name}_34_33_33_DPT_best.pth"
+    best_model_path = MODEL_DIR / f"{experiment_name}_34_33_33_DPT_best.pth" # CHANGE #
     experiment_start = time.time()
 
     print("=" * 70)
@@ -446,13 +573,44 @@ def run_initial_experiment(
     total_runtime = time.time() - experiment_start
 
     history_df = pd.DataFrame(history)
-    history_path = METRICS_DIR / f"{experiment_name}_34_33_33_DPT_training_history.csv"
+    history_path = METRICS_DIR / f"{experiment_name}_34_33_33_DPT_training_history.csv" # CHANGE #
     history_df.to_csv(history_path, index=False)
 
-    plot_path = VISUALIZATION_DIR / f"{experiment_name}_34_33_33_DPT_training_curves.png"
+    plot_path = VISUALIZATION_DIR / f"{experiment_name}_34_33_33_DPT_training_curves.png" # CHANGE #
     plot_training_history(history, plot_path)
 
     best_row = history_df.loc[history_df["val_dice"].idxmax()]
+
+    best_checkpoint = torch.load(
+        best_model_path,
+        map_location=device,
+    )
+
+    model.load_state_dict(
+        best_checkpoint["model_state_dict"]
+    )
+
+    slide_summary_df = evaluate_validation_by_slide(
+        model=model,
+        image_paths=val_image_paths,
+        mask_paths=val_mask_paths,
+        criterion=criterion,
+        device=device,
+        batch_size=batch_size,
+        threshold=threshold,
+    )
+
+    slide_summary_path = (
+        METRICS_DIR
+        / f"{experiment_name}_34_33_33_DPT_training_summary_slides.csv" # CHANGE #
+    )
+
+    slide_summary_df.to_csv(
+        slide_summary_path,
+        index=False,
+    )
+
+
     summary = {
         "encoder": ENCODER,
         "encoder_weights": ENCODER_WEIGHTS,
@@ -472,7 +630,7 @@ def run_initial_experiment(
     }
 
     summary_df = pd.DataFrame([summary])
-    summary_path = METRICS_DIR / f"{experiment_name}_34_33_33_DPT_training_summary.csv"
+    summary_path = METRICS_DIR / f"{experiment_name}_34_33_33_DPT_training_summary.csv" # CHANGE #
     summary_df.to_csv(summary_path, index=False)
 
     print("\n" + "=" * 70)

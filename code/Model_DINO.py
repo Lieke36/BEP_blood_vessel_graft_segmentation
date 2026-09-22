@@ -3,6 +3,7 @@
 from pathlib import Path
 import random
 import time
+import re
 
 import numpy as np
 import pandas as pd
@@ -21,9 +22,9 @@ from Losses_metrics import (
 )
 
 # Configuration
-TRAIN_DIR = Path(r"/home/20234257/BEP_Project/External_data/training_34_33_33")
+TRAIN_DIR = Path(r"/home/20234257/BEP_Project/External_data/training_34_33_33") # CHANGE #
 VALIDATION_DIR = Path(r"/home/20234257/BEP_Project/External_data/validation")
-RESULTS_DIR = Path(r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results")
+RESULTS_DIR = Path(r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full")
 
 MODEL_DIR = RESULTS_DIR / "models"
 METRICS_DIR = RESULTS_DIR / "metrics"
@@ -121,6 +122,102 @@ def find_pairs(directory, sample_size=None, seed=42):
     image_paths = [p[0] for p in pairs]
     mask_paths = [p[1] for p in pairs]
     return image_paths, mask_paths
+
+def extract_slide_id(image_path):
+    filename = Path(image_path).name
+    match = re.match(
+        r"^image_(.+?)_patch_\d+_tissue\.png$",
+        filename,
+    )
+
+    if match is None:
+        raise ValueError(
+            f"Could not extract slide ID from filename: {filename}"
+        )
+
+    return match.group(1)
+
+def evaluate_validation_by_slide(
+    model,
+    image_paths,
+    mask_paths,
+    criterion,
+    device,
+    batch_size,
+    threshold=0.5,
+):
+    slide_data = {}
+
+    for image_path, mask_path in zip(image_paths, mask_paths):
+        slide_id = extract_slide_id(image_path)
+        slide_data.setdefault(slide_id, []).append(
+            (image_path, mask_path)
+        )
+
+    results = []
+    model.eval()
+
+    with torch.no_grad():
+        for slide_id in sorted(slide_data):
+            pairs = slide_data[slide_id]
+
+            images = [p[0] for p in pairs]
+            masks = [p[1] for p in pairs]
+
+            dataset = SegmentationDataset(images, masks)
+
+            loader = DataLoader(
+                dataset,
+                batch_size=batch_size,
+                shuffle=False,
+                num_workers=NUM_WORKERS,
+                pin_memory=(
+                    torch.cuda.is_available()
+                    and PIN_MEMORY
+                ),
+            )
+
+            losses, dices = [], []
+            sensitivities, precisions = [], []
+
+            for batch_images, batch_masks in loader:
+                batch_images = batch_images.to(
+                    device,
+                    non_blocking=True,
+                )
+                batch_masks = batch_masks.to(
+                    device,
+                    non_blocking=True,
+                )
+
+                logits = model(batch_images)
+                loss = criterion(logits, batch_masks)
+
+                metrics = calculate_metrics(
+                    logits,
+                    batch_masks,
+                    threshold=threshold,
+                )
+
+                losses.append(loss.item())
+                dices.append(metrics["dice"])
+                sensitivities.append(
+                    metrics["sensitivity"]
+                )
+                precisions.append(
+                    metrics["precision"]
+                )
+
+            results.append({
+                "slide_id": slide_id,
+                "number_of_patches": len(dataset),
+                "loss": float(np.mean(losses)),
+                "dice": float(np.mean(dices)),
+                "sensitivity": float(np.mean(sensitivities)),
+                "precision": float(np.mean(precisions)),
+            })
+
+    return pd.DataFrame(results)
 
 def create_model():
     """
@@ -295,7 +392,7 @@ def run_initial_experiment(
 
     best_val_dice = -1.0
     best_epoch = None
-    best_model_path = MODEL_DIR / f"{experiment_name}_34_33_33_DINO_best.pth"
+    best_model_path = MODEL_DIR / f"{experiment_name}_34_33_33_DINO_best.pth" # CHANGE #
 
     start_time = time.time()
     print("\n" + "=" * 70)
@@ -346,13 +443,43 @@ def run_initial_experiment(
     total_runtime = time.time() - start_time
 
     history_df = pd.DataFrame(history)
-    history_path = METRICS_DIR / f"{experiment_name}_34_33_33_DINO_training_history.csv"
+    history_path = METRICS_DIR / f"{experiment_name}_34_33_33_DINO_training_history.csv" # CHANGE #
     history_df.to_csv(history_path, index=False)
 
-    plot_path = VISUALIZATION_DIR / f"{experiment_name}_34_33_33_DINO_training_curves.png"
+    plot_path = VISUALIZATION_DIR / f"{experiment_name}_34_33_33_DINO_training_curves.png" # CHANGE #
     plot_training_history(history, plot_path)
 
     best_row = history_df.loc[history_df["val_dice"].idxmax()]
+
+    best_checkpoint = torch.load(
+        best_model_path,
+        map_location=device,
+    )
+
+    model.load_state_dict(
+        best_checkpoint["model_state_dict"]
+    )
+
+    slide_summary_df = evaluate_validation_by_slide(
+        model=model,
+        image_paths=val_img,
+        mask_paths=val_mask,
+        criterion=criterion,
+        device=device,
+        batch_size=batch_size,
+        threshold=threshold,
+    )
+
+    slide_summary_path = (
+        METRICS_DIR
+        / f"{experiment_name}_34_33_33_DINO_training_summary_slides.csv" # CHANGE #
+    )
+
+    slide_summary_df.to_csv(
+        slide_summary_path,
+        index=False,
+    )
+
     summary = {
         "encoder": ENCODER,
         "sample_size": len(train_dataset),
@@ -367,7 +494,7 @@ def run_initial_experiment(
     }
 
     summary_df = pd.DataFrame([summary])
-    summary_path = METRICS_DIR / f"{experiment_name}_34_33_33_DINO_training_summary.csv"
+    summary_path = METRICS_DIR / f"{experiment_name}_34_33_33_DINO_training_summary.csv" # CHANGE #
     summary_df.to_csv(summary_path, index=False)
 
     print("\n" + "=" * 70)
