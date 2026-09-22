@@ -821,12 +821,19 @@ for image in annotated_images:
 
 ## download full annotated images and masks ##
 
-image_id_list_downloaded = [10955, 2152, 10535, 10925, 11712, 9943, 10010, 7522, 11525]
+image_id_list_downloaded = [10955, 2152, 10535, 10925, 11712, 9943, 10010, 7522, 11525, 10064, 11014, 10210, 10886, 11057, 11084, 11273, 10251, 10858] #18/19
 
 # image 2143 wont work because there is no "Tissue area" annotations
 
+new_image_ids = []
+
 for slide in image_id_list:
     if slide not in image_id_list_downloaded:
+
+        check = input(f"Proceed with slide {slide}? Enter 'yes': ")
+        if check.lower() != "yes":
+            break
+
         download_slides(
             project_id=PROJECT_ID,
             margin=0.1,
@@ -834,6 +841,12 @@ for slide in image_id_list:
             target="Tissue area",
             slide_id=slide,
         )
+
+        new_image_ids.append(slide)
+
+print("\nNew image IDs downloaded:")
+for image_id in new_image_ids:
+    print(image_id)
 
 
 
