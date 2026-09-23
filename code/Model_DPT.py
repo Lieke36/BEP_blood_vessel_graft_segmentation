@@ -103,7 +103,7 @@ class CustomViTDPT(nn.Module):
     def forward(self, x):
         orig_H, orig_W = x.shape[-2:]  # (512, 512)
         
-        # Reflection padding for 14px patch division (512 -> 532)
+        # Reflection padding for 14px patch division (512 -> 518)
         pad_h = (14 - (orig_H % 14)) % 14
         pad_w = (14 - (orig_W % 14)) % 14
         

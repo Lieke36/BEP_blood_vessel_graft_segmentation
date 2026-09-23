@@ -1060,29 +1060,6 @@ def evaluate_training_dice(
 # Evaluate validation metrics per slide
 # ============================================================
 
-def classify_mask_batch(masks):
-    """
-    Classifies masks as background, edge or foreground.
-    """
-
-    classifications = []
-
-    for mask in masks:
-        mask_min = mask.min().item()
-        mask_max = mask.max().item()
-
-        if mask_max == 0:
-            patch_type = "background"
-        elif mask_min == 1 and mask_max == 1:
-            patch_type = "foreground"
-        else:
-            patch_type = "edge"
-
-        classifications.append(patch_type)
-
-    return classifications
-
-
 def evaluate_validation_by_slide(
     model,
     image_paths,
