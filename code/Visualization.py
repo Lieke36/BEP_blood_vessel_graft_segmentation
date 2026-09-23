@@ -17,21 +17,21 @@ output_path = repo_path / "results" / "Visualizations"      # Change to correct 
 output_path.mkdir(parents=True, exist_ok=True)
 
 model_csv_list = [
+    #metric_path / "n10000_bs8_ep50_34_33_33_training_history.csv",
+    #metric_path / "n10000_bs8_ep50_training_history.csv",
+    #metric_path / "dpt_n10000_bs8_ep50_34_33_33_DPT_training_history.csv",
+    #metric_path / "dpt_n10000_bs8_ep50_DPT_training_history.csv",
     metric_path / "dino_resnet50_n10000_bs8_ep50_34_33_33_DINO_training_history.csv",
     metric_path / "dino_resnet50_n10000_bs8_ep50_DINO_training_history.csv",
-    metric_path / "n10000_bs8_ep50_34_33_33_training_history.csv",
-    metric_path / "n10000_bs8_ep50_training_history.csv",
-    metric_path / "dpt_n10000_bs8_ep50_34_33_33_DPT_training_history.csv",
-    metric_path / "dpt_n10000_bs8_ep50_DPT_training_history.csv",
 ]
 
 model_label_list = [
+    #"Model_0_equal",
+    #"Model_0_random",
+    #"Model_1_equal",
+    #"Model_1_random",
     "Model_2_equal",
     "Model_2_random",
-    "Model_0_equal",
-    "Model_0_random",
-    "Model_1_equal",
-    "Model_1_random",
 ]
 
 def combine_graph(model_csv_list, model_label_list):
@@ -55,7 +55,9 @@ def combine_graph(model_csv_list, model_label_list):
         "val_precision",
     ]
 
-    for csv_path, model_label in zip(model_csv_list, model_label_list):
+    colors = plt.cm.tab10.colors
+
+    for i, (csv_path, model_label) in enumerate(zip(model_csv_list, model_label_list)):
         csv_path = Path(csv_path)
 
         if not csv_path.exists():
@@ -73,15 +75,19 @@ def combine_graph(model_csv_list, model_label_list):
                 f"Missing columns in {csv_path}: {missing_columns}"
             )
 
+        color = colors[i % len(colors)]
+
         dice_ax.plot(
             data["epoch"],
             data["train_dice"],
             label=f"{model_label} - Train",
+            color=color,
         )
         dice_ax.plot(
             data["epoch"],
             data["val_dice"],
             label=f"{model_label} - Validation",
+            color=color,
             linestyle="--",
         )
 
@@ -89,11 +95,13 @@ def combine_graph(model_csv_list, model_label_list):
             data["epoch"],
             data["train_loss"],
             label=f"{model_label} - Train",
+            color=color,
         )
         loss_ax.plot(
             data["epoch"],
             data["val_loss"],
             label=f"{model_label} - Validation",
+            color=color,
             linestyle="--",
         )
 
