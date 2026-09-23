@@ -889,21 +889,10 @@ def full_patch_extraction(
 
     overlap must be between 0 and 0.5.
 
-    For example:
-        slide = 20x20
-        patch = 6x6
-        overlap = 0
-
-        floor(20/6) = 3
-
-        grid = 3x3 = 9 patches
-
-        grid size = 18x18
-
-        remaining = 2 pixels
-
-        therefore:
-            1 pixel border on each side
+    Patch types are determined from the ground-truth mask:
+        background = completely black mask
+        foreground = completely white mask
+        edge = anything else
 
     group must be:
         'training'
@@ -992,9 +981,6 @@ def full_patch_extraction(
 
         # -----------------------------------------------------
         # Determine stride from overlap.
-        #
-        # overlap = 0.0 -> stride = 512
-        # overlap = 0.5 -> stride = 256
         # -----------------------------------------------------
 
         stride = int(
@@ -1003,8 +989,6 @@ def full_patch_extraction(
 
         # -----------------------------------------------------
         # Determine number of complete patches.
-        #
-        # Incomplete patches at the edges are not used.
         # -----------------------------------------------------
 
         patches_x = math.floor(
@@ -1015,7 +999,6 @@ def full_patch_extraction(
             (height - patch_size) / stride
         ) + 1
 
-        # No patches if the slide is smaller than one patch.
         patches_x = max(patches_x, 0)
         patches_y = max(patches_y, 0)
 
@@ -1065,7 +1048,6 @@ def full_patch_extraction(
             grid_width = 0
             grid_height = 0
 
-        # Remaining pixels are split between both sides.
         start_x = (
             width - grid_width
         ) // 2
@@ -1117,6 +1099,33 @@ def full_patch_extraction(
                     )
                 )
 
+                # -------------------------------------------------
+                # Classify patch using ground-truth mask.
+                #
+                # Completely black  -> background
+                # Completely white  -> foreground
+                # Anything else     -> edge
+                # -------------------------------------------------
+
+                mask_min, mask_max = (
+                    mask_patch.getextrema()
+                )
+
+                if mask_max == 0:
+
+                    patch_type = "background"
+
+                elif (
+                    mask_min == 255
+                    and mask_max == 255
+                ):
+
+                    patch_type = "foreground"
+
+                else:
+
+                    patch_type = "edge"
+
                 patch_id = (
                     f"{slide_id}_{patch_number}"
                 )
@@ -1143,6 +1152,10 @@ def full_patch_extraction(
                 magnification = 0
                 degrees = 0
 
+                # -------------------------------------------------
+                # Store tissue information.
+                # -------------------------------------------------
+
                 append_csv_row(
                     tissue_csv,
                     {
@@ -1152,9 +1165,14 @@ def full_patch_extraction(
                         "y": y,
                         "magnification": magnification,
                         "degrees": degrees,
+                        "patch_type": patch_type,
                         "tissue_path": tissue_destination.name,
                     },
                 )
+
+                # -------------------------------------------------
+                # Store mask information.
+                # -------------------------------------------------
 
                 append_csv_row(
                     mask_csv,
@@ -1165,6 +1183,7 @@ def full_patch_extraction(
                         "y": y,
                         "magnification": magnification,
                         "degrees": degrees,
+                        "patch_type": patch_type,
                         "mask_path": mask_destination.name,
                     },
                 )
@@ -1177,6 +1196,7 @@ def full_patch_extraction(
     )
 
     return total_patches
+
 
 
 

@@ -1060,115 +1060,72 @@ def evaluate_training_dice(
 # Evaluate validation metrics per slide
 # ============================================================
 
+def classify_mask_batch(masks):
+    """
+    Classifies masks as background, edge or foreground.
+    """
+
+    classifications = []
+
+    for mask in masks:
+        mask_min = mask.min().item()
+        mask_max = mask.max().item()
+
+        if mask_max == 0:
+            patch_type = "background"
+        elif mask_min == 1 and mask_max == 1:
+            patch_type = "foreground"
+        else:
+            patch_type = "edge"
+
+        classifications.append(patch_type)
+
+    return classifications
+
+
+
+
 def evaluate_validation_by_slide(
     model,
     image_paths,
     mask_paths,
     criterion,
     device,
+    batch_size,
     threshold=0.5,
 ):
     """
-    Calculates validation metrics separately for every slide.
-
-    Each validation patch belongs to a slide based on its
-    filename:
-
-        image_{slide_id}_patch_{patch_nr}_tissue.png
-
-    Metrics are calculated for every patch and then averaged
-    within each slide.
-
-    Returns
-    -------
-    pandas.DataFrame
-
-        Columns:
-
-            slide_id
-            number_of_patches
-            loss
-            dice
-            sensitivity
-            precision
+    Calculates validation metrics separately for every slide
+    and for background, edge and foreground patches.
     """
 
     if len(image_paths) != len(mask_paths):
-
-        raise ValueError(
-            "Number of images and masks do not match."
-        )
-
-    # --------------------------------------------------------
-    # Group validation patches by slide
-    # --------------------------------------------------------
+        raise ValueError("Number of images and masks do not match.")
 
     slide_data = {}
 
-    for image_path, mask_path in zip(
-        image_paths,
-        mask_paths,
-    ):
-
-        slide_id = extract_slide_id(
-            image_path
-        )
-
-        # ----------------------------------------------------
-        # Optional slide filtering
-        # ----------------------------------------------------
+    for image_path, mask_path in zip(image_paths, mask_paths):
+        slide_id = extract_slide_id(image_path)
 
         if slide_id not in slide_data:
-
             slide_data[slide_id] = {
                 "image_paths": [],
                 "mask_paths": [],
             }
 
-        slide_data[slide_id][
-            "image_paths"
-        ].append(
-            image_path
-        )
-
-        slide_data[slide_id][
-            "mask_paths"
-        ].append(
-            mask_path
-        )
+        slide_data[slide_id]["image_paths"].append(image_path)
+        slide_data[slide_id]["mask_paths"].append(mask_path)
 
     if len(slide_data) == 0:
-
-        raise RuntimeError(
-            "No validation slides found for "
-            "the requested slide_id_list."
-        )
-
-    # --------------------------------------------------------
-    # Evaluate each slide
-    # --------------------------------------------------------
+        raise RuntimeError("No validation slides found.")
 
     results = []
-
     model.eval()
 
     with torch.no_grad():
-
-        for slide_id in sorted(
-            slide_data.keys()
-        ):
-
-            slide_image_paths = (
-                slide_data[slide_id][
-                    "image_paths"
-                ]
-            )
-
-            slide_mask_paths = (
-                slide_data[slide_id][
-                    "mask_paths"
-                ]
-            )
+        for slide_id in sorted(slide_data.keys()):
+            slide_image_paths = slide_data[slide_id]["image_paths"]
+            slide_mask_paths = slide_data[slide_id]["mask_paths"]
 
             slide_dataset = SegmentationDataset(
                 slide_image_paths,
@@ -1177,7 +1134,7 @@ def evaluate_validation_by_slide(
 
             slide_loader = DataLoader(
                 slide_dataset,
-                batch_size=BATCH_SIZE,
+                batch_size=batch_size,
                 shuffle=False,
                 num_workers=NUM_WORKERS,
                 pin_memory=(
@@ -1187,45 +1144,21 @@ def evaluate_validation_by_slide(
             )
 
             slide_loss_values = []
-
             slide_dice_values = []
-
             slide_sensitivity_values = []
-
             slide_precision_values = []
 
-            # ------------------------------------------------
-            # Evaluate all patches of this slide
-            # ------------------------------------------------
+            background_dice = []
+            edge_dice = []
+            foreground_dice = []
 
             for images, masks in slide_loader:
+                images = images.to(device, non_blocking=True)
+                masks = masks.to(device, non_blocking=True)
 
-                images = images.to(
-                    device,
-                    non_blocking=True,
-                )
+                logits = model(images)
 
-                masks = masks.to(
-                    device,
-                    non_blocking=True,
-                )
-
-                logits = model(
-                    images
-                )
-
-                # --------------------------------------------
-                # Loss
-                # --------------------------------------------
-
-                loss = criterion(
-                    logits,
-                    masks
-                )
-
-                # --------------------------------------------
-                # Metrics
-                # --------------------------------------------
+                loss = criterion(logits, masks)
 
                 metrics = calculate_metrics(
                     logits,
@@ -1233,71 +1166,78 @@ def evaluate_validation_by_slide(
                     threshold=threshold,
                 )
 
-                # --------------------------------------------
-                # Store batch metric
-                # --------------------------------------------
+                slide_loss_values.append(loss.item())
+                slide_dice_values.append(metrics["dice"])
+                slide_sensitivity_values.append(metrics["sensitivity"])
+                slide_precision_values.append(metrics["precision"])
 
-                slide_loss_values.append(
-                    loss.item()
-                )
+                predictions = (
+                    torch.sigmoid(logits) >= threshold
+                ).float()
 
-                slide_dice_values.append(
-                    metrics["dice"]
-                )
+                for i in range(images.size(0)):
+                    mask = masks[i]
+                    prediction = predictions[i]
 
-                slide_sensitivity_values.append(
-                    metrics["sensitivity"]
-                )
+                    mask_min = mask.min().item()
+                    mask_max = mask.max().item()
 
-                slide_precision_values.append(
-                    metrics["precision"]
-                )
+                    if mask_max == 0:
+                        patch_type = "background"
+                    elif mask_min == 1:
+                        patch_type = "foreground"
+                    else:
+                        patch_type = "edge"
 
-            # ------------------------------------------------
-            # Store slide results
-            # ------------------------------------------------
+                    intersection = (
+                        prediction * mask
+                    ).sum()
+
+                    dice_denominator = (
+                        prediction.sum()
+                        + mask.sum()
+                    )
+
+                    if dice_denominator == 0:
+                        patch_dice = 1.0
+                    else:
+                        patch_dice = (
+                            2.0
+                            * intersection
+                            / dice_denominator
+                        ).item()
+
+                    if patch_type == "background":
+                        background_dice.append(patch_dice)
+                    elif patch_type == "edge":
+                        edge_dice.append(patch_dice)
+                    else:
+                        foreground_dice.append(patch_dice)
 
             results.append(
                 {
                     "slide_id": slide_id,
-
-                    "number_of_patches":
-                        len(slide_dataset),
-
-                    "loss":
-                        float(
-                            np.mean(
-                                slide_loss_values
-                            )
-                        ),
-
-                    "dice":
-                        float(
-                            np.mean(
-                                slide_dice_values
-                            )
-                        ),
-
-                    "sensitivity":
-                        float(
-                            np.mean(
-                                slide_sensitivity_values
-                            )
-                        ),
-
-                    "precision":
-                        float(
-                            np.mean(
-                                slide_precision_values
-                            )
-                        ),
+                    "number_of_patches": len(slide_dataset),
+                    "loss": float(np.mean(slide_loss_values)),
+                    "dice": float(np.mean(slide_dice_values)),
+                    "sensitivity": float(np.mean(slide_sensitivity_values)),
+                    "precision": float(np.mean(slide_precision_values)),
+                    "dice_background": (
+                        float(np.mean(background_dice))
+                        if background_dice else np.nan
+                    ),
+                    "dice_edge": (
+                        float(np.mean(edge_dice))
+                        if edge_dice else np.nan
+                    ),
+                    "dice_foreground": (
+                        float(np.mean(foreground_dice))
+                        if foreground_dice else np.nan
+                    ),
                 }
             )
 
-    return pd.DataFrame(
-        results
-    )
-
+    return pd.DataFrame(results)
 
 # ============================================================
 # Save training curves
@@ -1425,88 +1365,33 @@ def run_initial_experiment(
     weight_decay=WEIGHT_DECAY,
     threshold=THRESHOLD,
 ):
-    """
-    Runs one complete baseline experiment.
-    """
-    # --------------------------------------------------------
-    # Experiment name
-    # --------------------------------------------------------
+    """Runs one complete baseline experiment."""
 
     experiment_name = (
         f"n{sample_size}"
         f"_bs{batch_size}"
         f"_ep{epochs}"
     )
-    
-    # --------------------------------------------------------
-    # Create output directories
-    # --------------------------------------------------------
 
-    RESULTS_DIR.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    METRICS_DIR.mkdir(parents=True, exist_ok=True)
+    VISUALIZATION_DIR.mkdir(parents=True, exist_ok=True)
 
-    MODEL_DIR.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    METRICS_DIR.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    VISUALIZATION_DIR.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    # --------------------------------------------------------
-    # Reproducibility
-    # --------------------------------------------------------
-
-    set_seed(
-        RANDOM_SEED
-    )
-
-    # --------------------------------------------------------
-    # Device
-    # --------------------------------------------------------
-
+    set_seed(RANDOM_SEED)
     device = get_device()
 
-    print(
-        f"\nUsing device: {device}"
-    )
+    print(f"\nUsing device: {device}")
 
-    # --------------------------------------------------------
-    # Training data
-    # --------------------------------------------------------
-
-    (
-        train_image_paths,
-        train_mask_paths,
-    ) = find_training_pairs(
+    train_image_paths, train_mask_paths = find_training_pairs(
         TRAIN_DIR,
         sample_size=sample_size,
         seed=RANDOM_SEED,
     )
 
-    # --------------------------------------------------------
-    # Validation data
-    # --------------------------------------------------------
-
-    (
-        val_image_paths,
-        val_mask_paths,
-    ) = find_validation_pairs(
+    val_image_paths, val_mask_paths = find_validation_pairs(
         VALIDATION_DIR
     )
-
-    # --------------------------------------------------------
-    # Create datasets
-    # --------------------------------------------------------
 
     train_dataset = SegmentationDataset(
         train_image_paths,
@@ -1518,40 +1403,21 @@ def run_initial_experiment(
         val_mask_paths,
     )
 
-    # --------------------------------------------------------
-    # Create DataLoaders
-    # --------------------------------------------------------
-
-    (
-        train_loader,
-        validation_loader,
-    ) = create_dataloaders(
+    train_loader, validation_loader = create_dataloaders(
         train_dataset,
         validation_dataset,
         batch_size=batch_size,
         num_workers=NUM_WORKERS,
     )
 
-    # --------------------------------------------------------
-    # Create model
-    # --------------------------------------------------------
-
-    print(
-        "\nCreating model..."
-    )
+    print("\nCreating model...")
 
     model = create_model(
         encoder_name=ENCODER,
         encoder_weights=ENCODER_WEIGHTS,
     )
 
-    model = model.to(
-        device
-    )
-
-    # --------------------------------------------------------
-    # Number of parameters
-    # --------------------------------------------------------
+    model = model.to(device)
 
     total_parameters = sum(
         parameter.numel()
@@ -1564,28 +1430,13 @@ def run_initial_experiment(
         if parameter.requires_grad
     )
 
-    print(
-        f"Total parameters: "
-        f"{total_parameters:,}"
-    )
-
-    print(
-        f"Trainable parameters: "
-        f"{trainable_parameters:,}"
-    )
-
-    # --------------------------------------------------------
-    # Loss
-    # --------------------------------------------------------
+    print(f"Total parameters: {total_parameters:,}")
+    print(f"Trainable parameters: {trainable_parameters:,}")
 
     criterion = BCEDiceLoss(
         bce_weight=0.5,
         dice_weight=0.5,
     )
-
-    # --------------------------------------------------------
-    # Optimizer
-    # --------------------------------------------------------
 
     optimizer = torch.optim.AdamW(
         model.parameters(),
@@ -1593,114 +1444,42 @@ def run_initial_experiment(
         weight_decay=weight_decay,
     )
 
-    # --------------------------------------------------------
-    # Training history
-    # --------------------------------------------------------
-
     history = {
-
         "epoch": [],
-
         "train_loss": [],
-
         "val_loss": [],
-
         "train_dice": [],
-
         "val_dice": [],
-
         "val_sensitivity": [],
-
         "val_precision": [],
     }
 
-    # --------------------------------------------------------
-    # Best model tracking
-    # --------------------------------------------------------
-
     best_validation_dice = -1.0
-
     best_epoch = None
 
     best_model_path = (
         MODEL_DIR
-        / f"{experiment_name}_10_80_10_best.pth" # CHANGE #
+        / f"{experiment_name}_10_80_10_best.pth"
     )
-
-    # --------------------------------------------------------
-    # Start experiment timer
-    # --------------------------------------------------------
 
     experiment_start = time.time()
 
-    print(
-        "\n"
-        + "=" * 70
-    )
+    print("\n" + "=" * 70)
+    print("STARTING INITIAL EXPERIMENT")
+    print("=" * 70)
+    print(f"Encoder:            {ENCODER}")
+    print(f"Pretrained:         {ENCODER_WEIGHTS}")
+    print(f"Training patches:   {len(train_dataset)}")
+    print(f"Validation patches: {len(validation_dataset)}")
+    print(f"Batch size:         {batch_size}")
+    print(f"Epochs:             {epochs}")
+    print(f"Learning rate:      {learning_rate}")
+    print(f"Weight decay:       {weight_decay}")
+    print(f"Threshold:          {threshold}")
+    print("=" * 70)
 
-    print(
-        "STARTING INITIAL EXPERIMENT"
-    )
-
-    print(
-        "=" * 70
-    )
-
-    print(
-        f"Encoder:          {ENCODER}"
-    )
-
-    print(
-        f"Pretrained:       {ENCODER_WEIGHTS}"
-    )
-
-    print(
-        f"Training patches: {len(train_dataset)}"
-    )
-
-    print(
-        f"Validation patches: "
-        f"{len(validation_dataset)}"
-    )
-
-    print(
-        f"Batch size:       {batch_size}"
-    )
-
-    print(
-        f"Epochs:            {epochs}"
-    )
-
-    print(
-        f"Learning rate:     {learning_rate}"
-    )
-
-    print(
-        f"Weight decay:      {weight_decay}"
-    )
-
-    print(
-        f"Threshold:         {threshold}"
-    )
-
-    print(
-        "=" * 70
-    )
-
-    # ========================================================
-    # Epoch loop
-    # ========================================================
-
-    for epoch in range(
-        1,
-        epochs + 1
-    ):
-
+    for epoch in range(1, epochs + 1):
         epoch_start = time.time()
-
-        # ----------------------------------------------------
-        # Training
-        # ----------------------------------------------------
 
         train_loss = train_one_epoch(
             model,
@@ -1710,10 +1489,6 @@ def run_initial_experiment(
             device,
         )
 
-        # ----------------------------------------------------
-        # Training Dice
-        # ----------------------------------------------------
-
         train_dice = evaluate_training_dice(
             model,
             train_loader,
@@ -1721,191 +1496,67 @@ def run_initial_experiment(
             threshold=threshold,
         )
 
-        # ----------------------------------------------------
-        # Validation
-        # ----------------------------------------------------
-
-        validation_results = (
-            validate_one_epoch(
-                model,
-                validation_loader,
-                criterion,
-                device,
-                threshold=threshold,
-            )
+        validation_results = validate_one_epoch(
+            model,
+            validation_loader,
+            criterion,
+            device,
+            threshold=threshold,
         )
 
-        val_loss = (
-            validation_results["loss"]
-        )
+        val_loss = validation_results["loss"]
+        val_dice = validation_results["dice"]
+        val_sensitivity = validation_results["sensitivity"]
+        val_precision = validation_results["precision"]
 
-        val_dice = (
-            validation_results["dice"]
-        )
+        epoch_time = time.time() - epoch_start
 
-        val_sensitivity = (
-            validation_results["sensitivity"]
-        )
+        history["epoch"].append(epoch)
+        history["train_loss"].append(train_loss)
+        history["val_loss"].append(val_loss)
+        history["train_dice"].append(train_dice)
+        history["val_dice"].append(val_dice)
+        history["val_sensitivity"].append(val_sensitivity)
+        history["val_precision"].append(val_precision)
 
-        val_precision = (
-            validation_results["precision"]
-        )
-
-        # ----------------------------------------------------
-        # Epoch runtime
-        # ----------------------------------------------------
-
-        epoch_time = (
-            time.time()
-            - epoch_start
-        )
-
-        # ----------------------------------------------------
-        # Store results
-        # ----------------------------------------------------
-
-        history["epoch"].append(
-            epoch
-        )
-
-        history["train_loss"].append(
-            train_loss
-        )
-
-        history["val_loss"].append(
-            val_loss
-        )
-
-        history["train_dice"].append(
-            train_dice
-        )
-
-        history["val_dice"].append(
-            val_dice
-        )
-
-        history["val_sensitivity"].append(
-            val_sensitivity
-        )
-
-        history["val_precision"].append(
-            val_precision
-        )
-
-        # ----------------------------------------------------
-        # Print epoch results
-        # ----------------------------------------------------
-
-        print(
-            f"\nEpoch "
-            f"{epoch:03d}/{epochs:03d}"
-        )
-
-        print(
-            f"  Train loss: "
-            f"{train_loss:.4f}"
-        )
-
-        print(
-            f"  Val loss:   "
-            f"{val_loss:.4f}"
-        )
-
-        print(
-            f"  Train Dice: "
-            f"{train_dice:.4f}"
-        )
-
-        print(
-            f"  Val Dice:   "
-            f"{val_dice:.4f}"
-        )
-
-        print(
-            f"  Val sens.:  "
-            f"{val_sensitivity:.4f}"
-        )
-
-        print(
-            f"  Val prec.:  "
-            f"{val_precision:.4f}"
-        )
-
-        print(
-            f"  Runtime:    "
-            f"{epoch_time:.2f} s"
-        )
-
-        # ----------------------------------------------------
-        # Save best model
-        # ----------------------------------------------------
+        print(f"\nEpoch {epoch:03d}/{epochs:03d}")
+        print(f"  Train loss: {train_loss:.4f}")
+        print(f"  Val loss:   {val_loss:.4f}")
+        print(f"  Train Dice: {train_dice:.4f}")
+        print(f"  Val Dice:   {val_dice:.4f}")
+        print(f"  Val sens.:  {val_sensitivity:.4f}")
+        print(f"  Val prec.:  {val_precision:.4f}")
+        print(f"  Runtime:    {epoch_time:.2f} s")
 
         if val_dice > best_validation_dice:
-
-            best_validation_dice = (
-                val_dice
-            )
-
+            best_validation_dice = val_dice
             best_epoch = epoch
 
             torch.save(
                 {
                     "epoch": epoch,
-
-                    "model_state_dict":
-                        model.state_dict(),
-
-                    "optimizer_state_dict":
-                        optimizer.state_dict(),
-
-                    "validation_dice":
-                        val_dice,
-
-                    "encoder":
-                        ENCODER,
-
-                    "encoder_weights":
-                        ENCODER_WEIGHTS,
-
-                    "batch_size":
-                        batch_size,
-
-                    "learning_rate":
-                        learning_rate,
-
-                    "weight_decay":
-                        weight_decay,
-
-                    "threshold":
-                        threshold,
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "validation_dice": val_dice,
+                    "encoder": ENCODER,
+                    "encoder_weights": ENCODER_WEIGHTS,
+                    "batch_size": batch_size,
+                    "learning_rate": learning_rate,
+                    "weight_decay": weight_decay,
+                    "threshold": threshold,
                 },
                 best_model_path,
             )
 
-            print(
-                "  -> New best model saved."
-            )
+            print("  -> New best model saved.")
 
-    # ========================================================
-    # Experiment finished
-    # ========================================================
+    total_runtime = time.time() - experiment_start
 
-    total_runtime = (
-        time.time()
-        - experiment_start
-    )
-
-    # --------------------------------------------------------
-    # Save training history
-    # --------------------------------------------------------
-
-    history_df = pd.DataFrame(
-        history
-    )
+    history_df = pd.DataFrame(history)
 
     history_path = (
         METRICS_DIR
-        / f"{experiment_name}_10_80_10_training_history.csv" # CHANGE #
+        / f"{experiment_name}_10_80_10_training_history.csv"
     )
 
     history_df.to_csv(
@@ -1913,13 +1564,9 @@ def run_initial_experiment(
         index=False,
     )
 
-    # --------------------------------------------------------
-    # Save training curves
-    # --------------------------------------------------------
-
     plot_path = (
         VISUALIZATION_DIR
-        / f"{experiment_name}_10_80_10_training_curves.png" # CHANGE #
+        / f"{experiment_name}_10_80_10_training_curves.png"
     )
 
     plot_training_history(
@@ -1927,26 +1574,10 @@ def run_initial_experiment(
         plot_path,
     )
 
-    # --------------------------------------------------------
-    # Find best epoch
-    # --------------------------------------------------------
+    best_index = history_df["val_dice"].idxmax()
+    best_row = history_df.loc[best_index]
 
-    best_index = (
-        history_df["val_dice"].idxmax()
-    )
-
-    best_row = (
-        history_df.loc[best_index]
-    )
-
-    # --------------------------------------------------------
-    # Load best model
-    # --------------------------------------------------------
-
-    print(
-        "\nLoading best model for "
-        "slide-level evaluation..."
-    )
+    print("\nLoading best model for slide-level evaluation...")
 
     best_checkpoint = torch.load(
         best_model_path,
@@ -1954,45 +1585,25 @@ def run_initial_experiment(
     )
 
     model.load_state_dict(
-        best_checkpoint[
-            "model_state_dict"
-        ]
+        best_checkpoint["model_state_dict"]
     )
 
-    model = model.to(
-        device
+    model = model.to(device)
+
+    slide_summary_df = evaluate_validation_by_slide(
+        model=model,
+        image_paths=val_image_paths,
+        mask_paths=val_mask_paths,
+        criterion=criterion,
+        device=device,
+        batch_size=batch_size,
+        threshold=threshold,
     )
-
-    # --------------------------------------------------------
-    # Calculate validation metrics per slide
-    # --------------------------------------------------------
-
-    slide_summary_df = (
-        evaluate_validation_by_slide(
-            model=model,
-
-            image_paths=val_image_paths,
-
-            mask_paths=val_mask_paths,
-
-            criterion=criterion,
-
-            device=device,
-
-            batch_size=batch_size,
-
-            threshold=threshold,
-        )
-    )
-
-    # --------------------------------------------------------
-    # Save slide-level summary
-    # --------------------------------------------------------
 
     slide_summary_path = (
         METRICS_DIR
         / f"{experiment_name}"
-        f"_10_80_10_training_summary_slides.csv" # CHANGE #
+        f"_10_80_10_training_summary_slides.csv"
     )
 
     slide_summary_df.to_csv(
@@ -2000,79 +1611,43 @@ def run_initial_experiment(
         index=False,
     )
 
-    # --------------------------------------------------------
-    # Final summary
-    # --------------------------------------------------------
-
     summary = {
-
-        "encoder":
-            ENCODER,
-
-        "encoder_weights":
-            ENCODER_WEIGHTS,
-
-        "sample_size":
-            len(train_dataset),
-
-        "validation_size":
-            len(validation_dataset),
-
-        "batch_size":
-            batch_size,
-
-        "epochs":
-            epochs,
-
-        "learning_rate":
-            learning_rate,
-
-        "weight_decay":
-            weight_decay,
-
-        "threshold":
-            threshold,
-
-        "best_epoch":
-            int(
-                best_row["epoch"]
-            ),
-
-        "best_val_dice":
-            float(
-                best_row["val_dice"]
-            ),
-
-        "best_val_loss":
-            float(
-                best_row["val_loss"]
-            ),
-
-        "best_val_sensitivity":
-            float(
-                best_row[
-                    "val_sensitivity"
-                ]
-            ),
-
-        "best_val_precision":
-            float(
-                best_row[
-                    "val_precision"
-                ]
-            ),
-
-        "total_runtime_seconds":
-            total_runtime,
+        "encoder": ENCODER,
+        "encoder_weights": ENCODER_WEIGHTS,
+        "sample_size": len(train_dataset),
+        "validation_size": len(validation_dataset),
+        "batch_size": batch_size,
+        "epochs": epochs,
+        "learning_rate": learning_rate,
+        "weight_decay": weight_decay,
+        "threshold": threshold,
+        "best_epoch": int(best_row["epoch"]),
+        "best_val_dice": float(best_row["val_dice"]),
+        "best_val_loss": float(best_row["val_loss"]),
+        "best_val_sensitivity": float(
+            best_row["val_sensitivity"]
+        ),
+        "best_val_precision": float(
+            best_row["val_precision"]
+        ),
+        "best_val_dice_background": float(
+            slide_summary_df["dice_background"].mean()
+        ),
+        "best_val_dice_edge": float(
+            slide_summary_df["dice_edge"].mean()
+        ),
+        "best_val_dice_foreground": float(
+            slide_summary_df["dice_foreground"].mean()
+        ),
+        "total_runtime_seconds": total_runtime,
     }
 
-    summary_df = pd.DataFrame(
-        [summary]
-    )
+    summary_df = pd.DataFrame([summary])
 
     summary_path = (
         METRICS_DIR
-        / f"{experiment_name}_10_80_10_training_summary.csv" # CHANGE #
+        / f"{experiment_name}"
+        f"_10_80_10_training_summary.csv"
     )
 
     summary_df.to_csv(
@@ -2080,57 +1655,35 @@ def run_initial_experiment(
         index=False,
     )
 
-    # --------------------------------------------------------
-    # Print final summary
-    # --------------------------------------------------------
-
-    print(
-        "\n"
-        + "=" * 70
-    )
-
+    print("\n" + "=" * 70)
     print("EXPERIMENT FINISHED")
-
     print("=" * 70)
-
-    print(
-        f"Best epoch:           "
-        f"{best_epoch}"
-    )
-
+    print(f"Best epoch:           {best_epoch}")
     print(
         f"Best validation Dice: "
         f"{best_validation_dice:.4f}"
     )
-
     print(
         f"Total runtime:        "
         f"{total_runtime / 60:.2f} minutes"
     )
-
     print("\nBest model:")
     print(best_model_path)
-
     print("\nTraining history:")
     print(history_path)
-
     print("\nTraining curves:")
     print(plot_path)
-
+    print("\nSlide summary:")
+    print(slide_summary_path)
     print("\nSummary:")
     print(summary_path)
-
     print("=" * 70)
 
     return {
         "model": model,
-
         "history": history,
-
         "summary": summary,
-
-        "best_model_path":
-            best_model_path,
+        "best_model_path": best_model_path,
     }
 
 
