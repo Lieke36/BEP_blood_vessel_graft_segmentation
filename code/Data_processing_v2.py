@@ -869,12 +869,12 @@ def random_patch_train(
         )
 
 
-
 def full_patch_extraction(
     slides_dir,
     output_dir,
     slide_id,
     group,
+    overlap=0,
 ):
     """
     Extracts all complete 512x512 patches from one slide.
@@ -883,9 +883,16 @@ def full_patch_extraction(
 
     The grid is centered in the slide.
 
+    overlap determines the overlap between neighboring patches:
+        0.0 = no overlap, stride = 512 pixels
+        0.5 = 50% overlap, stride = 256 pixels
+
+    overlap must be between 0 and 0.5.
+
     For example:
         slide = 20x20
         patch = 6x6
+        overlap = 0
 
         floor(20/6) = 3
 
@@ -927,6 +934,11 @@ def full_patch_extraction(
         raise ValueError(
             "group must be 'training', 'test' "
             "or 'validation'."
+        )
+
+    if not 0 <= overlap <= 0.5:
+        raise ValueError(
+            "overlap must be between 0 and 0.5."
         )
 
     csv_dir = Path("data") / group
@@ -979,19 +991,33 @@ def full_patch_extraction(
         width, height = tissue_image.size
 
         # -----------------------------------------------------
+        # Determine stride from overlap.
+        #
+        # overlap = 0.0 -> stride = 512
+        # overlap = 0.5 -> stride = 256
+        # -----------------------------------------------------
+
+        stride = int(
+            patch_size * (1 - overlap)
+        )
+
+        # -----------------------------------------------------
         # Determine number of complete patches.
         #
-        # floor is intentional:
-        # incomplete patches at the edges are not used.
+        # Incomplete patches at the edges are not used.
         # -----------------------------------------------------
 
         patches_x = math.floor(
-            width / patch_size
-        )
+            (width - patch_size) / stride
+        ) + 1
 
         patches_y = math.floor(
-            height / patch_size
-        )
+            (height - patch_size) / stride
+        ) + 1
+
+        # No patches if the slide is smaller than one patch.
+        patches_x = max(patches_x, 0)
+        patches_y = max(patches_y, 0)
 
         total_patches = (
             patches_x * patches_y
@@ -1008,6 +1034,14 @@ def full_patch_extraction(
         )
 
         print(
+            f"Overlap: {overlap}"
+        )
+
+        print(
+            f"Stride: {stride} px"
+        )
+
+        print(
             f"Total patches: {total_patches}"
         )
 
@@ -1015,13 +1049,21 @@ def full_patch_extraction(
         # Determine size of centered grid.
         # -----------------------------------------------------
 
-        grid_width = (
-            patches_x * patch_size
-        )
+        if total_patches > 0:
 
-        grid_height = (
-            patches_y * patch_size
-        )
+            grid_width = (
+                patch_size
+                + (patches_x - 1) * stride
+            )
+
+            grid_height = (
+                patch_size
+                + (patches_y - 1) * stride
+            )
+
+        else:
+            grid_width = 0
+            grid_height = 0
 
         # Remaining pixels are split between both sides.
         start_x = (
@@ -1045,12 +1087,12 @@ def full_patch_extraction(
 
                 x = (
                     start_x
-                    + column * patch_size
+                    + column * stride
                 )
 
                 y = (
                     start_y
-                    + row * patch_size
+                    + row * stride
                 )
 
                 # -------------------------------------------------
@@ -1135,6 +1177,7 @@ def full_patch_extraction(
     )
 
     return total_patches
+
 
 
 def append_csv_row(path, row):
@@ -1264,22 +1307,24 @@ for slide_id in train_slide_id_list:
 
 ## download validation/testing patches ##
 
-#for slide_id in test_slide_id_list:
-#    full_patch_extraction(
-#        slides_dir=slides_dir,
-#        output_dir=test_output_dir,
-#        slide_id=slide_id,
-#        group="test",
-#    )
+for slide_id in test_slide_id_list:
+    full_patch_extraction(
+        slides_dir=slides_dir,
+        output_dir=test_output_dir,
+        slide_id=slide_id,
+        group="test",
+        overlap=0.125,
+    )
 
 
-#for slide_id in val_slide_id_list:
-#    full_patch_extraction(
-#        slides_dir=slides_dir,
-#        output_dir=val_output_dir,
-#        slide_id=slide_id,
-#        group="validation",
-#    )
+for slide_id in val_slide_id_list:
+    full_patch_extraction(
+        slides_dir=slides_dir,
+        output_dir=val_output_dir,
+        slide_id=slide_id,
+        group="validation",
+        overlap=0.125
+    )
 
 
 end_time = time.time()
