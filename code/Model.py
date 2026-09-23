@@ -1083,8 +1083,6 @@ def classify_mask_batch(masks):
     return classifications
 
 
-
-
 def evaluate_validation_by_slide(
     model,
     image_paths,

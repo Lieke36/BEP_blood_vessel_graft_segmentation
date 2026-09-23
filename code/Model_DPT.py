@@ -277,6 +277,34 @@ def create_dataloaders(train_dataset, validation_dataset, batch_size, num_worker
     return train_loader, validation_loader
 
 
+def evaluate_training_dice(model, loader, device, threshold=0.5):
+    model.eval()
+    dice_values = []
+    with torch.no_grad():
+        for images, masks in loader:
+            images = images.to(device, non_blocking=True)
+            masks = masks.to(device, non_blocking=True)
+            logits = model(images)
+            metrics = calculate_metrics(logits, masks, threshold=threshold)
+            dice_values.append(metrics["dice"])
+    return float(np.mean(dice_values))
+
+
+def classify_mask_batch(masks):
+    classifications = []
+    for mask in masks:
+        mask_min = mask.min().item()
+        mask_max = mask.max().item()
+        if mask_max == 0:
+            patch_type = "background"
+        elif mask_min == 1 and mask_max == 1:
+            patch_type = "foreground"
+        else:
+            patch_type = "edge"
+        classifications.append(patch_type)
+    return classifications
+
+
 def evaluate_validation_by_slide(
     model,
     image_paths,
@@ -286,48 +314,42 @@ def evaluate_validation_by_slide(
     batch_size,
     threshold=0.5,
 ):
-    slide_data = {}
+    # Check image/mask pairing
+    if len(image_paths) != len(mask_paths):
+        raise ValueError("Number of images and masks do not match.")
 
-    for image_path, mask_path in zip(
-        image_paths,
-        mask_paths,
-    ):
+    # Group validation patches by slide
+    slide_data = {}
+    for image_path, mask_path in zip(image_paths, mask_paths):
         slide_id = extract_slide_id(image_path)
 
         if slide_id not in slide_data:
-            slide_data[slide_id] = []
+            slide_data[slide_id] = {
+                "image_paths": [],
+                "mask_paths": [],
+            }
 
-        slide_data[slide_id].append(
-            (image_path, mask_path)
-        )
+        slide_data[slide_id]["image_paths"].append(image_path)
+        slide_data[slide_id]["mask_paths"].append(mask_path)
+
+    if len(slide_data) == 0:
+        raise RuntimeError("No validation slides found.")
 
     results = []
-
     model.eval()
 
     with torch.no_grad():
+        for slide_id in sorted(slide_data.keys()):
+            slide_image_paths = slide_data[slide_id]["image_paths"]
+            slide_mask_paths = slide_data[slide_id]["mask_paths"]
 
-        for slide_id in sorted(slide_data):
-
-            pairs = slide_data[slide_id]
-
-            slide_images = [
-                pair[0]
-                for pair in pairs
-            ]
-
-            slide_masks = [
-                pair[1]
-                for pair in pairs
-            ]
-
-            dataset = SegmentationDataset(
-                slide_images,
-                slide_masks,
+            slide_dataset = SegmentationDataset(
+                slide_image_paths,
+                slide_mask_paths,
             )
 
-            loader = DataLoader(
-                dataset,
+            slide_loader = DataLoader(
+                slide_dataset,
                 batch_size=batch_size,
                 shuffle=False,
                 num_workers=NUM_WORKERS,
@@ -335,25 +357,24 @@ def evaluate_validation_by_slide(
                     torch.cuda.is_available()
                     and PIN_MEMORY
                 ),
-                persistent_workers=(
-                    NUM_WORKERS > 0
-                ),
             )
 
-            losses = []
-            dices = []
-            sensitivities = []
-            precisions = []
+            slide_loss_values = []
+            slide_dice_values = []
+            slide_sensitivity_values = []
+            slide_precision_values = []
 
-            for images, masks in loader:
+            background_dice = []
+            edge_dice = []
+            foreground_dice = []
 
-                images = images.to(device, non_blocking=True,)
+            for images, masks in slide_loader:
+                images = images.to(device, non_blocking=True)
+                masks = masks.to(device, non_blocking=True)
 
-                masks = masks.to(device, non_blocking=True,)
-
+                # Model prediction
                 logits = model(images)
-
-                loss = criterion(logits, masks,)
+                loss = criterion(logits, masks)
 
                 metrics = calculate_metrics(
                     logits,
@@ -361,25 +382,67 @@ def evaluate_validation_by_slide(
                     threshold=threshold,
                 )
 
-                losses.append(loss.item())
-                dices.append(metrics["dice"])
-                sensitivities.append(
-                    metrics["sensitivity"]
-                )
-                precisions.append(
-                    metrics["precision"]
-                )
+                slide_loss_values.append(loss.item())
+                slide_dice_values.append(metrics["dice"])
+                slide_sensitivity_values.append(metrics["sensitivity"])
+                slide_precision_values.append(metrics["precision"])
 
+                # Calculate patch-level Dice
+                predictions = (
+                    torch.sigmoid(logits) >= threshold
+                ).float()
+
+                patch_types = classify_mask_batch(masks)
+
+                for i, patch_type in enumerate(patch_types):
+                    mask = masks[i]
+                    prediction = predictions[i]
+
+                    intersection = (
+                        prediction * mask
+                    ).sum()
+
+                    dice_denominator = (
+                        prediction.sum()
+                        + mask.sum()
+                    )
+
+                    if dice_denominator == 0:
+                        patch_dice = 1.0
+                    else:
+                        patch_dice = (
+                            2.0
+                            * intersection
+                            / dice_denominator
+                        ).item()
+
+                    # Store Dice according to patch class
+                    if patch_type == "background":
+                        background_dice.append(patch_dice)
+                    elif patch_type == "edge":
+                        edge_dice.append(patch_dice)
+                    else:
+                        foreground_dice.append(patch_dice)
+
+            # Store slide-level results
             results.append({
                 "slide_id": slide_id,
-                "number_of_patches": len(dataset),
-                "loss": float(np.mean(losses)),
-                "dice": float(np.mean(dices)),
-                "sensitivity": float(
-                    np.mean(sensitivities)
+                "number_of_patches": len(slide_dataset),
+                "loss": float(np.mean(slide_loss_values)),
+                "dice": float(np.mean(slide_dice_values)),
+                "sensitivity": float(np.mean(slide_sensitivity_values)),
+                "precision": float(np.mean(slide_precision_values)),
+                "dice_background": (
+                    float(np.mean(background_dice))
+                    if background_dice else np.nan
                 ),
-                "precision": float(
-                    np.mean(precisions)
+                "dice_edge": (
+                    float(np.mean(edge_dice))
+                    if edge_dice else np.nan
+                ),
+                "dice_foreground": (
+                    float(np.mean(foreground_dice))
+                    if foreground_dice else np.nan
                 ),
             })
 
@@ -481,29 +544,58 @@ def run_initial_experiment(
 ):
     experiment_name = f"dpt_n{sample_size}_bs{batch_size}_ep{epochs}"
 
-    for dir_path in [RESULTS_DIR, MODEL_DIR, METRICS_DIR, VISUALIZATION_DIR]:
+    # Create output directories
+    for dir_path in [
+        RESULTS_DIR,
+        MODEL_DIR,
+        METRICS_DIR,
+        VISUALIZATION_DIR,
+    ]:
         dir_path.mkdir(parents=True, exist_ok=True)
 
     set_seed(RANDOM_SEED)
     device = get_device()
 
+    # Load training and validation data
     train_image_paths, train_mask_paths = find_pairs(
-        TRAIN_DIR, sample_size=sample_size, seed=RANDOM_SEED
+        TRAIN_DIR,
+        sample_size=sample_size,
+        seed=RANDOM_SEED,
     )
-    val_image_paths, val_mask_paths = find_pairs(VALIDATION_DIR)
 
-    train_dataset = SegmentationDataset(train_image_paths, train_mask_paths)
-    validation_dataset = SegmentationDataset(val_image_paths, val_mask_paths)
+    val_image_paths, val_mask_paths = find_pairs(
+        VALIDATION_DIR
+    )
+
+    train_dataset = SegmentationDataset(
+        train_image_paths,
+        train_mask_paths,
+    )
+
+    validation_dataset = SegmentationDataset(
+        val_image_paths,
+        val_mask_paths,
+    )
 
     train_loader, validation_loader = create_dataloaders(
-        train_dataset, validation_dataset, batch_size=batch_size, num_workers=NUM_WORKERS
+        train_dataset,
+        validation_dataset,
+        batch_size=batch_size,
+        num_workers=NUM_WORKERS,
     )
 
+    # Create model, loss and optimizer
     model = create_model().to(device)
 
-    criterion = BCEDiceLoss(bce_weight=0.5, dice_weight=0.5)
+    criterion = BCEDiceLoss(
+        bce_weight=0.5,
+        dice_weight=0.5,
+    )
+
     optimizer = torch.optim.AdamW(
-        model.parameters(), lr=learning_rate, weight_decay=weight_decay
+        model.parameters(),
+        lr=learning_rate,
+        weight_decay=weight_decay,
     )
 
     history = {
@@ -518,22 +610,46 @@ def run_initial_experiment(
 
     best_validation_dice = -1.0
     best_epoch = None
-    best_model_path = MODEL_DIR / f"{experiment_name}_34_33_33_DPT_best.pth" # CHANGE #
+
+    best_model_path = (
+        MODEL_DIR
+        / f"{experiment_name}_34_33_33_DPT_best.pth"
+    )
+
     experiment_start = time.time()
 
     print("=" * 70)
     print("STARTING DPT EXPERIMENT (CUSTOM ViT-DPT DINOv2 @ 512x512)")
     print("=" * 70)
 
+    # Training loop
     for epoch in range(1, epochs + 1):
         epoch_start = time.time()
 
-        train_loss, train_dice = train_one_epoch(
-            model, train_loader, optimizer, criterion, device, threshold=threshold
+        train_loss, _ = train_one_epoch(
+            model,
+            train_loader,
+            optimizer,
+            criterion,
+            device,
+            threshold=threshold,
         )
 
+        # Calculate training Dice after the epoch
+        train_dice = evaluate_training_dice(
+            model,
+            train_loader,
+            device,
+            threshold=threshold,
+        )
+
+        # Validate model
         val_results = validate_one_epoch(
-            model, validation_loader, criterion, device, threshold=threshold
+            model,
+            validation_loader,
+            criterion,
+            device,
+            threshold=threshold,
         )
 
         history["epoch"].append(epoch)
@@ -541,18 +657,33 @@ def run_initial_experiment(
         history["val_loss"].append(val_results["loss"])
         history["train_dice"].append(train_dice)
         history["val_dice"].append(val_results["dice"])
-        history["val_sensitivity"].append(val_results["sensitivity"])
-        history["val_precision"].append(val_results["precision"])
+        history["val_sensitivity"].append(
+            val_results["sensitivity"]
+        )
+        history["val_precision"].append(
+            val_results["precision"]
+        )
 
         epoch_time = time.time() - epoch_start
 
-        print(f"\nEpoch {epoch:03d}/{epochs:03d} [{epoch_time:.2f}s]")
-        print(f"  Train Loss: {train_loss:.4f} | Val Loss: {val_results['loss']:.4f}")
-        print(f"  Train Dice: {train_dice:.4f} | Val Dice: {val_results['dice']:.4f}")
+        print(
+            f"\nEpoch {epoch:03d}/{epochs:03d} "
+            f"[{epoch_time:.2f}s]"
+        )
+        print(
+            f"  Train Loss: {train_loss:.4f} | "
+            f"Val Loss: {val_results['loss']:.4f}"
+        )
+        print(
+            f"  Train Dice: {train_dice:.4f} | "
+            f"Val Dice: {val_results['dice']:.4f}"
+        )
 
+        # Save best validation model
         if val_results["dice"] > best_validation_dice:
             best_validation_dice = val_results["dice"]
             best_epoch = epoch
+
             torch.save(
                 {
                     "epoch": epoch,
@@ -568,19 +699,39 @@ def run_initial_experiment(
                 },
                 best_model_path,
             )
+
             print("  -> New best model saved.")
 
     total_runtime = time.time() - experiment_start
 
+    # Save training history and curves
     history_df = pd.DataFrame(history)
-    history_path = METRICS_DIR / f"{experiment_name}_34_33_33_DPT_training_history.csv" # CHANGE #
-    history_df.to_csv(history_path, index=False)
 
-    plot_path = VISUALIZATION_DIR / f"{experiment_name}_34_33_33_DPT_training_curves.png" # CHANGE #
-    plot_training_history(history, plot_path)
+    history_path = (
+        METRICS_DIR
+        / f"{experiment_name}_34_33_33_DPT_training_history.csv"
+    )
 
-    best_row = history_df.loc[history_df["val_dice"].idxmax()]
+    history_df.to_csv(
+        history_path,
+        index=False,
+    )
 
+    plot_path = (
+        VISUALIZATION_DIR
+        / f"{experiment_name}_34_33_33_DPT_training_curves.png"
+    )
+
+    plot_training_history(
+        history,
+        plot_path,
+    )
+
+    best_row = history_df.loc[
+        history_df["val_dice"].idxmax()
+    ]
+
+    # Load best model for slide evaluation
     best_checkpoint = torch.load(
         best_model_path,
         map_location=device,
@@ -590,6 +741,7 @@ def run_initial_experiment(
         best_checkpoint["model_state_dict"]
     )
 
+    # Calculate final slide-level metrics
     slide_summary_df = evaluate_validation_by_slide(
         model=model,
         image_paths=val_image_paths,
@@ -602,7 +754,7 @@ def run_initial_experiment(
 
     slide_summary_path = (
         METRICS_DIR
-        / f"{experiment_name}_34_33_33_DPT_training_summary_slides.csv" # CHANGE #
+        / f"{experiment_name}_34_33_33_DPT_training_summary_slides.csv"
     )
 
     slide_summary_df.to_csv(
@@ -610,7 +762,7 @@ def run_initial_experiment(
         index=False,
     )
 
-
+    # Create overall experiment summary
     summary = {
         "encoder": ENCODER,
         "encoder_weights": ENCODER_WEIGHTS,
@@ -624,19 +776,46 @@ def run_initial_experiment(
         "best_epoch": int(best_row["epoch"]),
         "best_val_dice": float(best_row["val_dice"]),
         "best_val_loss": float(best_row["val_loss"]),
-        "best_val_sensitivity": float(best_row["val_sensitivity"]),
-        "best_val_precision": float(best_row["val_precision"]),
+        "best_val_sensitivity": float(
+            best_row["val_sensitivity"]
+        ),
+        "best_val_precision": float(
+            best_row["val_precision"]
+        ),
+        "best_val_dice_background": float(
+            slide_summary_df["dice_background"].mean()
+        ),
+        "best_val_dice_edge": float(
+            slide_summary_df["dice_edge"].mean()
+        ),
+        "best_val_dice_foreground": float(
+            slide_summary_df["dice_foreground"].mean()
+        ),
         "total_runtime_seconds": total_runtime,
     }
 
     summary_df = pd.DataFrame([summary])
-    summary_path = METRICS_DIR / f"{experiment_name}_34_33_33_DPT_training_summary.csv" # CHANGE #
-    summary_df.to_csv(summary_path, index=False)
+
+    summary_path = (
+        METRICS_DIR
+        / f"{experiment_name}_34_33_33_DPT_training_summary.csv"
+    )
+
+    summary_df.to_csv(
+        summary_path,
+        index=False,
+    )
 
     print("\n" + "=" * 70)
     print("EXPERIMENT FINISHED")
-    print(f"Best Epoch: {best_epoch} | Best Val Dice: {best_validation_dice:.4f}")
-    print(f"Total Runtime: {total_runtime / 60:.2f} minutes")
+    print(
+        f"Best Epoch: {best_epoch} | "
+        f"Best Val Dice: {best_validation_dice:.4f}"
+    )
+    print(
+        f"Total Runtime: "
+        f"{total_runtime / 60:.2f} minutes"
+    )
     print("=" * 70)
 
     return {
