@@ -57,6 +57,7 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 import matplotlib.pyplot as plt
+import time
 
 
 from PIL import Image
@@ -1966,8 +1967,9 @@ def process_fem_pipeline(
 # EXECUTION
 # ============================================================
 
-SLIDE_ID = "9943"
+SLIDE_ID = "2152"
 
+start_time = time.perf_counter()
 
 if __name__ == "__main__":
     TISSUE_PATH = Path(
@@ -1993,3 +1995,5 @@ if __name__ == "__main__":
     )
 
 
+total_time = time.perf_counter() - start_time
+print(f"TOTAL RUNTIME: {total_time:.2f} seconds")
