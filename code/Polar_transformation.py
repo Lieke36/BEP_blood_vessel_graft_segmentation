@@ -1,16 +1,20 @@
 ### test ###
 
+# Creates rectangle intensity graph with degrees on y-axis, and normalized distance on x-axis
+# Also refolds it to make the ideal annulus (ring) tissue
+# Pro: general (same reconstruction for all slides regardless of size) -> can be used for all images
+# Problem 1 : The larger the radius, the more stretched after refolding
+# Problem 2 : Very deformed tissue gets messed up a (see slide 10010)
+
 from pathlib import Path
 import numpy as np
 from PIL import Image
 from scipy import ndimage
+import matplotlib.pyplot as plt
 
-
-from pathlib import Path
-import numpy as np
 from PIL import Image
-from scipy import ndimage
 
+Image.MAX_IMAGE_PIXELS = None
 
 def load_and_preprocess_images(tissue_path: Path, mask_path: Path):
     """Loads tissue (RGB or Grayscale) and mask images, keeping color channels intact."""
@@ -243,17 +247,56 @@ def save_image(array: np.ndarray, output_path: Path) -> Path:
     Image.fromarray(output_uint8).save(output_path)
     return output_path
 
+def plot_unrolled_intensity(unrolled_image: np.ndarray, output_dir: Path, save_plots: bool = True, slide_id: str = "?"):
+    """Saves RGB intensity vs normalized radius and vs angle plots."""
+    if not save_plots:
+        return
+
+    n_angles, n_radial = unrolled_image.shape[:2]
+    angles = np.linspace(0, 360, n_angles, endpoint=False)
+    radius = np.linspace(0, 1, n_radial)
+
+    # Average intensity over angle for each radius
+    radial_intensity = np.mean(unrolled_image, axis=0)
+
+    plt.figure(figsize=(8, 5))
+    for ch, color, label in [(0, "red", "Red"), (1, "green", "Green"), (2, "blue", "Blue")]:
+        plt.plot(radius, radial_intensity[:, ch], color=color, label=label)
+    plt.xlabel("Normalized radius")
+    plt.ylabel("Intensity")
+    plt.title("Intensity vs normalized radius")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(output_dir / f"{slide_id}_intensity_vs_radius.png", dpi=300)
+    plt.close()
+
+    # Average intensity over radius for each angle
+    angular_intensity = np.mean(unrolled_image, axis=1)
+
+    plt.figure(figsize=(8, 5))
+    for ch, color, label in [(0, "red", "Red"), (1, "green", "Green"), (2, "blue", "Blue")]:
+        plt.plot(angles, angular_intensity[:, ch], color=color, label=label)
+    plt.xlabel("Angle (degrees)")
+    plt.ylabel("Intensity")
+    plt.title("Intensity vs angle")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(output_dir / f"{slide_id}_intensity_vs_angle.png", dpi=300)
+    plt.close()
+
 
 def process_vessel_pipeline(
     tissue_path: Path,
     mask_path: Path,
     output_dir: Path,
+    slide_id: str = "?",
     n_angles: int = 360,
     n_radial: int = 2048,
     max_radius: float = 6000.0,
     interpolation_order: int = 1,
     fold_r_inner: float = 100.0,
     fold_r_outer: float = 350.0,
+    save_plots: bool = False,
 ):
     """Main execution pipeline: Unrolls tissue and then folds it back."""
     print("1. Loading tissue and mask...")
@@ -274,9 +317,18 @@ def process_vessel_pipeline(
         max_radius=max_radius,
         interpolation_order=interpolation_order,
     )
-    unrolled_path = output_dir / "unrolled_vessel.png"
+    unrolled_path = output_dir / f"{slide_id}_unrolled_vessel.png"
     save_image(unrolled, unrolled_path)
     print(f"   Saved unrolled image: {unrolled_path} (Shape: {unrolled.shape})")
+
+    plot_unrolled_intensity(
+        unrolled,
+        output_dir,
+        save_plots=save_plots,
+        slide_id=slide_id
+        
+    )
+
 
     print("4. Folding rectangle back into annulus ring...")
     folded = fold_annulus_rgb(
@@ -286,25 +338,31 @@ def process_vessel_pipeline(
         canvas_size=(12000, 12000),
         interpolation_order=interpolation_order,
     )
-    folded_path = output_dir / "reconstructed_annulus.png"
+    folded_path = output_dir / f"{slide_id}_reconstructed_annulus.png"
     save_image(folded, folded_path)
     print(f"   Saved reconstructed annulus: {folded_path} (Shape: {folded.shape})")
 
+### EXECUTION ###
+
+SLIDE_ID = "9943"
+
 
 if __name__ == "__main__":
-    TISSUE_PATH = Path(r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_2152_tissue.png")
-    MASK_PATH = Path(r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_2152_mask.png")
-    OUTPUT_DIR = Path(r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides")
+    TISSUE_PATH = Path(rf"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_{SLIDE_ID}_tissue.png")
+    MASK_PATH = Path(rf"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_{SLIDE_ID}_mask.png")
+    OUTPUT_DIR = Path(r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\POLAR_transformation")
 
     process_vessel_pipeline(
         tissue_path=TISSUE_PATH,
         mask_path=MASK_PATH,
         output_dir=OUTPUT_DIR,
+        slide_id=SLIDE_ID,
         n_angles=720,
         n_radial=2048,
         max_radius=7000,
         interpolation_order=1,
         fold_r_inner=2000.0,  # Inner lumen radius (black)
         fold_r_outer=5500.0,  # Outer wall radius
+        save_plots=True,
     )
 

@@ -23,7 +23,7 @@ Image.MAX_IMAGE_PIXELS = None
 
 ## Settings ##
 slides_dir = Path(r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides")
-slide_id = 10955
+slide_id = 9943
 
 
 ## Functions ##
@@ -63,7 +63,10 @@ def save_distance_map(distance, path):
     # Convert RGBA (0–1) to RGB (0–255)
     image = (colored[:, :, :3] * 255).astype(np.uint8)
 
-    Image.fromarray(image).save(path)
+    output_path = path.parent / "distance_transformation"
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    Image.fromarray(image).save(output_path / path.name)
 
 
 def load_tissue_image(path):
@@ -103,13 +106,17 @@ def calculate_mean_intensity_by_distance(
 
 
 
-def plot_intensity_vs_distance(distances, mean_intensity, path):
+def plot_intensity_vs_distance(distances, mean_intensity, path, slide_id):
     plt.figure(figsize=(6, 5))
     plt.plot(distances, mean_intensity)
     plt.xlabel("Distance to lumen (pixels)")
     plt.ylabel("Mean pixel intensity")
     plt.tight_layout()
-    plt.savefig(path, dpi=300)
+
+    output_path = path.parent / "distance_transformation"
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    plt.savefig(output_path / path.name, dpi=300)
     plt.close()
 
 
@@ -176,7 +183,8 @@ def main(slide_id):
     plot_intensity_vs_distance(
         distances,
         mean_intensity,
-        slides_dir / f"image_{slide_id}_distance_intensity.png"
+        slides_dir / f"image_{slide_id}_distance_intensity.png",
+        slide_id=slide_id
     )
     print(
         f"Creating graph: "
