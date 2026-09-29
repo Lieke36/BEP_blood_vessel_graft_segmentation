@@ -76,7 +76,6 @@ def _draw_geometry_on_mask(
 
     scale_factor : float
         Source-to-output scale factor.
-        For 40x -> 10x this is 4.
 
     fill : int
         Pixel value to draw.
@@ -171,8 +170,7 @@ def download_slides(
         on each side. For example, margin=0.1 adds 10% on every side.
 
     Tissue:
-        The selected region is downloaded from Cytomine at approximately 10x
-        (40x -> 10x).
+        The selected region is downloaded from Cytomine at approximately 10x.
 
     Mask:
         White  = target ("Tissue area")
@@ -286,6 +284,53 @@ def download_slides(
         # If slide_id was supplied, skip all other slides.
         if slide_id is not None and image.id != slide_id:
             continue
+
+        # -----------------------------------------------------
+        # Get source magnification
+        # -----------------------------------------------------
+
+        source_magnification = getattr(
+            image,
+            "magnification",
+            None
+        )
+
+        if source_magnification is None:
+            raise ValueError(
+                f"Image {image.id} does not have a source magnification. "
+                f"Cannot reliably convert it to 10x."
+            )
+
+        try:
+            source_magnification = float(source_magnification)
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"Invalid magnification for image {image.id}: "
+                f"{source_magnification!r}"
+            )
+
+        if source_magnification <= 0:
+            raise ValueError(
+                f"Invalid magnification for image {image.id}: "
+                f"{source_magnification}"
+            )
+
+        target_magnification = 10.0
+
+        # How much should the image dimensions be reduced?
+        #
+        # 40x -> 10x = divide dimensions by 4
+        # 20x -> 10x = divide dimensions by 2
+        # 10x -> 10x = divide dimensions by 1
+        scale_reduction = (
+            source_magnification / target_magnification
+        )
+
+        print(
+            f"Image {image.id}: "
+            f"{source_magnification:g}x -> {target_magnification:g}x "
+            f"(reduction factor {scale_reduction:g})"
+        )
 
         # -----------------------------------------------------
         # Get ALL annotations.
@@ -438,23 +483,13 @@ def download_slides(
         tile_height = ceil(box_height / grid_y)
 
         # -----------------------------------------------------
-        # 40x -> 10x
-        #
-        # Cytomine image.window() returns a reduced image when
-        # max_size is supplied.
-        #
-        # We keep the same approach as the working function:
-        # determine the scale from the downloaded tile itself.
+        # Download tissue
         # -----------------------------------------------------
 
         destination = (
             output_dir
             / f"image_{image.id}_tissue.png"
         )
-
-        # -----------------------------------------------------
-        # Download tissue
-        # -----------------------------------------------------
 
         tile_images = []
 
@@ -486,12 +521,17 @@ def download_slides(
                         / f"tile_{row}_{column}.png"
                     )
 
-                    # Request each tile at 1/4 resolution
-                    # (approximately 40x -> 10x).
+                    # Request the tile at the resolution needed
+                    # to obtain 10x.
+                    #
+                    # 40x -> 10x = divide by 4
+                    # 20x -> 10x = divide by 2
+                    # 10x -> 10x = divide by 1
                     #
                     # max_size is applied to the larger dimension.
                     requested_max_size = ceil(
-                        max(current_width, current_height) / 4
+                        max(current_width, current_height)
+                        / scale_reduction
                     )
 
                     downloaded = image.window(
@@ -539,7 +579,7 @@ def download_slides(
             # Determine actual Cytomine scale from first tile.
             #
             # This avoids assuming that Cytomine returns
-            # exactly width/4 pixels.
+            # exactly the requested number of pixels.
             # -------------------------------------------------
 
             scale_x = (
@@ -707,12 +747,8 @@ def download_slides(
             "tissue_path": str(destination),
             "width": stitched_width,
             "height": stitched_height,
-            "magnification": 10,
-            "source_magnification": getattr(
-                image,
-                "magnification",
-                ""
-            ),
+            "magnification": target_magnification,
+            "source_magnification": source_magnification,
             "min_x": min_x,
             "min_y": min_y,
             "max_x": max_x,
@@ -726,12 +762,8 @@ def download_slides(
             "mask_path": str(mask_destination),
             "width": stitched_width,
             "height": stitched_height,
-            "magnification": 10,
-            "source_magnification": getattr(
-                image,
-                "magnification",
-                ""
-            ),
+            "magnification": target_magnification,
+            "source_magnification": source_magnification,
             "min_x": min_x,
             "min_y": min_y,
             "max_x": max_x,
@@ -741,7 +773,8 @@ def download_slides(
 
         print(
             f"Downloaded image {image.id}: "
-            f"{stitched_width} x {stitched_height} px at approximately 10x."
+            f"{stitched_width} x {stitched_height} px "
+            f"({source_magnification:g}x -> {target_magnification:g}x)."
         )
 
     # ---------------------------------------------------------
@@ -821,11 +854,11 @@ for image in annotated_images:
 
 ## download full annotated images and masks ##
 
-image_id_list_downloaded = [10955, 2152, 10535, 10925, 11712, 9943, 10010, 7522, 11525, 10064, 11014, 10210, 10886, 11057, 11084, 11273, 10251, 10858] #18/19
+image_id_list_downloaded = [10955, 2152, 10535, 10925, 11712, 9943, 10010, 11525, 10064, 11014, 10210, 10886, 11057, 11084, 11273, 10251, 10858] #18/19
 
 # image 2143 wont work because there is no "Tissue area" annotations
 
-new_image_ids = []
+new_image_ids = [7522]
 
 for slide in image_id_list:
     if slide not in image_id_list_downloaded:
@@ -847,6 +880,7 @@ for slide in image_id_list:
 print("\nNew image IDs downloaded:")
 for image_id in new_image_ids:
     print(image_id)
+
 
 
 
