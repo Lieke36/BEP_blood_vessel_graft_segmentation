@@ -14,6 +14,7 @@
 ## libraries ##
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 from PIL import Image
 from scipy.ndimage import binary_fill_holes, distance_transform_edt
 from pathlib import Path
@@ -23,7 +24,7 @@ Image.MAX_IMAGE_PIXELS = None
 
 ## Settings ##
 slides_dir = Path(r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides")
-slide_id = 9943
+slide_id = 2152
 
 
 ## Functions ##
@@ -107,17 +108,30 @@ def calculate_mean_intensity_by_distance(
 
 
 def plot_intensity_vs_distance(distances, mean_intensity, path, slide_id):
+    csv_path = Path(__file__).parent.parent / "data" / "slides" / "tissue_slides.csv"
+    slide_data = pd.read_csv(csv_path)
+    slide_row = slide_data[slide_data["slide_id"] == slide_id]
+
+    if slide_row.empty:
+        raise ValueError(f"Slide {slide_id} was not found in {csv_path}.")
+
+    pixel_size_um = slide_row.iloc[0]["pixel_size_um"]
+    if pd.isna(pixel_size_um):
+        raise ValueError(f"No pixel size available for slide {slide_id}.")
+
+    distances_um = distances * pixel_size_um
+
     plt.figure(figsize=(6, 5))
-    plt.plot(distances, mean_intensity)
-    plt.xlabel("Distance to lumen (pixels)")
+    plt.plot(distances_um, mean_intensity)
+    plt.xlabel("Distance to lumen (µm)")
     plt.ylabel("Mean pixel intensity")
     plt.tight_layout()
 
     output_path = path.parent / "distance_transformation"
     output_path.mkdir(parents=True, exist_ok=True)
-
     plt.savefig(output_path / path.name, dpi=300)
     plt.close()
+
 
 
 

@@ -330,11 +330,20 @@ def download_slides(
         # Get source pixel size
         # -----------------------------------------------------
 
-        source_pixel_size_um = getattr(
-            image,
-            "resolution",
-            None
-        )
+        physical_size_x = getattr(image, "physicalSizeX", None)
+        physical_size_y = getattr(image, "physicalSizeY", None)
+
+        if physical_size_x is not None and physical_size_y is not None:
+            source_pixel_size_um = (
+                float(physical_size_x) + float(physical_size_y)
+            ) / 2
+        elif physical_size_x is not None:
+            source_pixel_size_um = float(physical_size_x)
+        elif physical_size_y is not None:
+            source_pixel_size_um = float(physical_size_y)
+        else:
+            source_pixel_size_um = None
+
 
         if source_pixel_size_um is not None:
             try:
