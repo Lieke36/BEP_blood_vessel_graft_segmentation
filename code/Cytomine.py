@@ -326,6 +326,41 @@ def download_slides(
             source_magnification / target_magnification
         )
 
+        # -----------------------------------------------------
+        # Get source pixel size
+        # -----------------------------------------------------
+
+        source_pixel_size_um = getattr(
+            image,
+            "resolution",
+            None
+        )
+
+        if source_pixel_size_um is not None:
+            try:
+                source_pixel_size_um = float(
+                    source_pixel_size_um
+                )
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"Invalid pixel size/resolution for image "
+                    f"{image.id}: {source_pixel_size_um!r}"
+                )
+
+        # Pixel size of the downloaded image at approximately 10x.
+        #
+        # Example:
+        #   40x with 0.25 um/pixel -> 10x with 1.0 um/pixel
+        #   20x with 0.50 um/pixel -> 10x with 1.0 um/pixel
+        #
+        if source_pixel_size_um is not None:
+            pixel_size_um = (
+                source_pixel_size_um
+                * scale_reduction
+            )
+        else:
+            pixel_size_um = None
+
         print(
             f"Image {image.id}: "
             f"{source_magnification:g}x -> {target_magnification:g}x "
@@ -749,6 +784,8 @@ def download_slides(
             "height": stitched_height,
             "magnification": target_magnification,
             "source_magnification": source_magnification,
+            "source_pixel_size_um": source_pixel_size_um,
+            "pixel_size_um": pixel_size_um,
             "min_x": min_x,
             "min_y": min_y,
             "max_x": max_x,
@@ -764,6 +801,8 @@ def download_slides(
             "height": stitched_height,
             "magnification": target_magnification,
             "source_magnification": source_magnification,
+            "source_pixel_size_um": source_pixel_size_um,
+            "pixel_size_um": pixel_size_um,
             "min_x": min_x,
             "min_y": min_y,
             "max_x": max_x,
@@ -829,7 +868,7 @@ def download_slides(
 
 ## connect to cytomine ##
 
-HOST = "http://131.155.65.6:8080/"
+HOST = "http://131.155.65.159:8080/"
 PROJECT_ID = 1903  # Replace with the Cytomine project ID that contains 'Annotated'.
 
 # for HPC use: /home/20234257/BEP_Project/External_data/slides
@@ -854,18 +893,18 @@ for image in annotated_images:
 
 ## download full annotated images and masks ##
 
-image_id_list_downloaded = [10955, 2152, 10535, 10925, 11712, 9943, 10010, 11525, 10064, 11014, 10210, 10886, 11057, 11084, 11273, 10251, 10858] #18/19
+image_id_list_downloaded = [10955, 2152, 10535, 10925, 11712, 9943, 10010, 7522, 11525, 10064, 11014, 10210, 10858, 10886, 11057, 11084, 11273, 10251, 10103, 10315, 9972, 10174, 10361, 10143] #24/25
 
 # image 2143 wont work because there is no "Tissue area" annotations
 
-new_image_ids = [7522]
+new_image_ids = []
 
 for slide in image_id_list:
     if slide not in image_id_list_downloaded:
 
         check = input(f"Proceed with slide {slide}? Enter 'yes': ")
         if check.lower() != "yes":
-            break
+            continue
 
         download_slides(
             project_id=PROJECT_ID,
@@ -883,6 +922,3 @@ for image_id in new_image_ids:
 
 
 
-
-
-## visualize annotated mask over tissue to show its aligned ##
