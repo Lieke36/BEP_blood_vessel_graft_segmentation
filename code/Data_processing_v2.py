@@ -1267,21 +1267,21 @@ def get_slide_ids(csv_path):
 
 # set ratios
 # ratios: (fill in None for all for no set ratio)
-background_ratio = 0.10
-edge_ratio = 0.80
-foreground_ratio=0.10
+background_ratio = None
+edge_ratio = None
+foreground_ratio = None
 
-ratio_name = (
-    f"{int(background_ratio * 100)}_"
-    f"{int(edge_ratio * 100)}_"
-    f"{int(foreground_ratio * 100)}"
-)
-# ratio_name = "equal"
+#ratio_name = (
+#    f"{int(background_ratio * 100)}_"
+#    f"{int(edge_ratio * 100)}_"
+#    f"{int(foreground_ratio * 100)}"
+#)
+
 
 ## set paths of the slides and the output paths ##
 # Note to self: for HPC, use the correct (different) paths!
 slides_dir = r"/home/20234257/BEP_Project/External_data/slides"
-# train_output_dir = r"/home/20234257/BEP_Project/External_data/training" # -> for data processing without set ratio
+train_output_dir = r"/home/20234257/BEP_Project/External_data/training_random" # -> for data processing without set ratio
 #train_output_dir = (
 #    f"/home/20234257/BEP_Project/External_data/"
 #    f"training_{ratio_name}"
@@ -1316,39 +1316,39 @@ val_slide_id_list = [10251, 11084, 10886, 11712, 11273, 80655]
 
 ## download random training patches ##
 
-#for slide_id in train_slide_id_list:
-#    random_patch_train(
-#        slides_dir=slides_dir,
-#        train_output_dir=train_output_dir,
-#        slide_id=slide_id,
-#        n=2000,
-#        magnification_change=0.1,
-#        background_ratio=background_ratio,
-#        edge_ratio=edge_ratio,
-#        foreground_ratio=foreground_ratio,
-#    )
+for slide_id in train_slide_id_list:
+    random_patch_train(
+        slides_dir=slides_dir,
+        train_output_dir=train_output_dir,
+        slide_id=slide_id,
+        n=1000,
+        magnification_change=0.1,
+        background_ratio=background_ratio,
+        edge_ratio=edge_ratio,
+        foreground_ratio=foreground_ratio,
+    )
 
 
 ## download validation/testing patches ##
 
-for slide_id in test_slide_id_list:
-    full_patch_extraction(
-        slides_dir=slides_dir,
-        output_dir=test_output_dir,
-        slide_id=slide_id,
-        group="test",
-        overlap=0.125,
-    )
+#for slide_id in test_slide_id_list:
+#    full_patch_extraction(
+#        slides_dir=slides_dir,
+#        output_dir=test_output_dir,
+#        slide_id=slide_id,
+#        group="test",
+#        overlap=0.125,
+#    )
 
 
-for slide_id in val_slide_id_list:
-    full_patch_extraction(
-        slides_dir=slides_dir,
-        output_dir=val_output_dir,
-        slide_id=slide_id,
-        group="validation",
-        overlap=0.125
-    )
+#for slide_id in val_slide_id_list:
+#    full_patch_extraction(
+#        slides_dir=slides_dir,
+#        output_dir=val_output_dir,
+#        slide_id=slide_id,
+#        group="validation",
+#        overlap=0.125
+#    )
 
 
 end_time = time.time()
