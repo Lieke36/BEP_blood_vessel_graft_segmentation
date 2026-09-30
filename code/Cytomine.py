@@ -902,9 +902,18 @@ for image in annotated_images:
 
 ## download full annotated images and masks ##
 
-image_id_list_downloaded = [10955, 2152, 10535, 10925, 11712, 9943, 10010, 7522, 11525, 10064, 11014, 10210, 10858, 10886, 11057, 11084, 11273, 10251, 10103, 10315, 9972, 10174, 10361, 10143] #24/25
+image_id_list_downloaded = [
+    10955, 2152, 10535, 10925, 11712, 9943, 10010, 7522,
+    11525, 11014, 10210, 10858, 10886, 11057, 11084,
+    11273, 10251, 10103, 10315, 9972, 10174, 10361, 10143,
+    11133, 10648, 10765, 10782, 11193, 11418, 11629, 11743,
+    80490, 80501, 80589, 80600, 80655, 80975, 10404, 10449,
+    10284, 10503,
+]
 
+# 40/43 downloaded
 # image 2143 wont work because there is no "Tissue area" annotations
+# image 10064 and 10103 have fully black masks (line annotation instead of area)
 
 new_image_ids = []
 
