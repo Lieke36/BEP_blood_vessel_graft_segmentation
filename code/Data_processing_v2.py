@@ -1267,25 +1267,25 @@ def get_slide_ids(csv_path):
 
 # set ratios
 # ratios: (fill in None for all for no set ratio)
-background_ratio = None
-edge_ratio = None
-foreground_ratio = None
+background_ratio = 34
+edge_ratio = 33
+foreground_ratio = 33
 
-#ratio_name = (
-#    f"{int(background_ratio * 100)}_"
-#    f"{int(edge_ratio * 100)}_"
-#    f"{int(foreground_ratio * 100)}"
-#)
+ratio_name = (
+    f"{int(background_ratio * 100)}_"
+    f"{int(edge_ratio * 100)}_"
+    f"{int(foreground_ratio * 100)}"
+)
 
 
 ## set paths of the slides and the output paths ##
 # Note to self: for HPC, use the correct (different) paths!
 slides_dir = r"/home/20234257/BEP_Project/External_data/slides"
-train_output_dir = r"/home/20234257/BEP_Project/External_data/training_random" # -> for data processing without set ratio
-#train_output_dir = (
-#    f"/home/20234257/BEP_Project/External_data/"
-#    f"training_{ratio_name}"
-#)
+#train_output_dir = r"/home/20234257/BEP_Project/External_data/training_random" # -> for data processing without set ratio
+train_output_dir = (
+    f"/home/20234257/BEP_Project/External_data/"
+    f"training_{ratio_name}"
+)
 test_output_dir = r"/home/20234257/BEP_Project/External_data/testing"
 val_output_dir = r"/home/20234257/BEP_Project/External_data/validation"
 
