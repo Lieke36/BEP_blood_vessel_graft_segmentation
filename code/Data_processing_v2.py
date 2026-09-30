@@ -1303,9 +1303,14 @@ print(image_id_list)
 
 ## train-test-val split ##
 # Note to self: maybe do random test/train/val split?
-train_slide_id_list = [2152, 7522, 10010, 10925, 11712]
-test_slide_id_list = [10955, 11525]
-val_slide_id_list = [9943, 10535]
+train_slide_id_list = [
+    9943, 10010, 10210, 10143, 10315, 9972, 10174,
+    10955, 10925, 11014, 10858, 11057, 11133, 10765, 
+    10782, 10535, 10361, 10404, 10449, 10284, 10503, 
+    11525, 11418, 11629, 7522, 80490, 80501, 80589
+]
+test_slide_id_list = [2152, 11193, 10648, 11743, 80975, 80600]
+val_slide_id_list = [10251, 11084, 10886m 11712, 11273, 80655]
 
 
 
