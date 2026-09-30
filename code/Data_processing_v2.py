@@ -1276,7 +1276,7 @@ ratio_name = (
     f"{int(edge_ratio * 100)}_"
     f"{int(foreground_ratio * 100)}"
 )
-
+# ratio_name = "equal"
 
 ## set paths of the slides and the output paths ##
 # Note to self: for HPC, use the correct (different) paths!
@@ -1310,7 +1310,7 @@ train_slide_id_list = [
     11525, 11418, 11629, 7522, 80490, 80501, 80589
 ]
 test_slide_id_list = [2152, 11193, 10648, 11743, 80975, 80600]
-val_slide_id_list = [10251, 11084, 10886m 11712, 11273, 80655]
+val_slide_id_list = [10251, 11084, 10886, 11712, 11273, 80655]
 
 
 
