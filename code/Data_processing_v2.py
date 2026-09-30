@@ -1282,10 +1282,10 @@ ratio_name = (
 # Note to self: for HPC, use the correct (different) paths!
 slides_dir = r"/home/20234257/BEP_Project/External_data/slides"
 # train_output_dir = r"/home/20234257/BEP_Project/External_data/training" # -> for data processing without set ratio
-train_output_dir = (
-    f"/home/20234257/BEP_Project/External_data/"
-    f"training_{ratio_name}"
-)
+#train_output_dir = (
+#    f"/home/20234257/BEP_Project/External_data/"
+#    f"training_{ratio_name}"
+#)
 test_output_dir = r"/home/20234257/BEP_Project/External_data/testing"
 val_output_dir = r"/home/20234257/BEP_Project/External_data/validation"
 
@@ -1316,18 +1316,17 @@ val_slide_id_list = [10251, 11084, 10886, 11712, 11273, 80655]
 
 ## download random training patches ##
 
-for slide_id in train_slide_id_list:
-    random_patch_train(
-        slides_dir=slides_dir,
-        train_output_dir=train_output_dir,
-        slide_id=slide_id,
-        n=2000,
-        magnification_change=0.1,
-        background_ratio=background_ratio,
-        edge_ratio=edge_ratio,
-        foreground_ratio=foreground_ratio,
-
-    )
+#for slide_id in train_slide_id_list:
+#    random_patch_train(
+#        slides_dir=slides_dir,
+#        train_output_dir=train_output_dir,
+#        slide_id=slide_id,
+#        n=2000,
+#        magnification_change=0.1,
+#        background_ratio=background_ratio,
+#        edge_ratio=edge_ratio,
+#        foreground_ratio=foreground_ratio,
+#    )
 
 
 ## download validation/testing patches ##
