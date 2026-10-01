@@ -11,6 +11,7 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 import matplotlib.pyplot as plt
+import pandas as pd
 import time
 
 from PIL import Image
@@ -78,6 +79,8 @@ def unroll_annulus_rgb(
         output = np.zeros((n_angles, n_radial), dtype=np.float32)
 
     valid_rays = np.zeros(n_angles, dtype=bool)
+    inner_radii = np.full(n_angles, np.nan)
+    outer_radii = np.full(n_angles, np.nan)
 
     # Pad tissue by 1 pixel on borders to prevent out-of-bounds boundary artifacts
     if is_rgb:
@@ -116,6 +119,8 @@ def unroll_annulus_rgb(
             continue
 
         valid_rays[angle_index] = True
+        inner_radii[angle_index] = r_inner
+        outer_radii[angle_index] = r_outer
 
         # 4. Map d=0..1 normalized depth back to real image coordinates (+1 shift for padding)
         sample_radii = r_inner + normalized_radius * (r_outer - r_inner)
@@ -153,7 +158,10 @@ def unroll_annulus_rgb(
             ]
             output[idx] = output[nearest_valid_idx]
 
-    return output
+    mean_r_inner = float(np.nanmean(inner_radii))
+    mean_r_outer = float(np.nanmean(outer_radii))
+
+    return output, mean_r_inner, mean_r_outer
 
 
 def fold_annulus_rgb(
@@ -248,25 +256,40 @@ def save_image(array: np.ndarray, output_path: Path) -> Path:
     Image.fromarray(output_uint8).save(output_path)
     return output_path
 
-def plot_unrolled_intensity(unrolled_image: np.ndarray, output_dir: Path, save_plots: bool = True, slide_id: str = "?"):
+def plot_unrolled_intensity(unrolled_image: np.ndarray, output_dir: Path, save_plots: bool = True, slide_id: str = "?",
+                            r_inner: float = None, r_outer: float = None):
     """Saves RGB intensity vs normalized radius and vs angle plots."""
     if not save_plots:
         return
 
+    csv_path = Path(__file__).parent.parent / "data" / "slides" / "tissue_slides.csv"
+    slide_data = pd.read_csv(csv_path)
+    slide_row = slide_data[slide_data["slide_id"] == int(slide_id)]
+
+    if slide_row.empty:
+        raise ValueError(f"Slide {slide_id} was not found in {csv_path}.")
+
+    pixel_size_um = slide_row.iloc[0]["pixel_size_um"]
+    if pd.isna(pixel_size_um):
+        raise ValueError(f"No pixel size available for slide {slide_id}.")
+
     n_angles, n_radial = unrolled_image.shape[:2]
     angles = np.linspace(0, 360, n_angles, endpoint=False)
-    radius = np.linspace(0, 1, n_radial)
+
+    normalized_radius = np.linspace(0, 1, n_radial)
+    radius_pixels = r_inner + normalized_radius * (r_outer - r_inner)
+    radius_um = radius_pixels * pixel_size_um
 
     # Average intensity over angle for each radius
     radial_intensity = np.mean(unrolled_image, axis=0)
 
     plt.figure(figsize=(8, 5))
-    for ch, color, label in [(0, "red", "Red"), (1, "green", "Green"), (2, "blue", "Blue")]:
-        plt.plot(radius, radial_intensity[:, ch], color=color, label=label)
-    plt.xlabel("Normalized radius")
+    if unrolled_image.ndim == 3:
+        radial_intensity = np.mean(radial_intensity, axis=1)
+    plt.plot(radius_um, radial_intensity, color="black")
+    plt.xlabel("Radial distance (µm)")
     plt.ylabel("Intensity")
-    plt.title("Intensity vs normalized radius")
-    plt.legend()
+    plt.title("Intensity vs physical radial distance")
     plt.tight_layout()
     plt.savefig(output_dir / f"{slide_id}_intensity_vs_radius.png", dpi=300)
     plt.close()
@@ -275,12 +298,13 @@ def plot_unrolled_intensity(unrolled_image: np.ndarray, output_dir: Path, save_p
     angular_intensity = np.mean(unrolled_image, axis=1)
 
     plt.figure(figsize=(8, 5))
-    for ch, color, label in [(0, "red", "Red"), (1, "green", "Green"), (2, "blue", "Blue")]:
-        plt.plot(angles, angular_intensity[:, ch], color=color, label=label)
+    if unrolled_image.ndim == 3:
+        angular_intensity = np.mean(angular_intensity, axis=1)
+
+    plt.plot(angles, angular_intensity, color="black")
     plt.xlabel("Angle (degrees)")
     plt.ylabel("Intensity")
     plt.title("Intensity vs angle")
-    plt.legend()
     plt.tight_layout()
     plt.savefig(output_dir / f"{slide_id}_intensity_vs_angle.png", dpi=300)
     plt.close()
@@ -308,7 +332,7 @@ def process_vessel_pipeline(
     print(f"   Center: x={center_x:.2f}, y={center_y:.2f}")
 
     print("3. Unrolling tissue to polar rectangle...")
-    unrolled = unroll_annulus_rgb(
+    unrolled, mean_r_inner, mean_r_outer = unroll_annulus_rgb(
         tissue=tissue,
         mask_binary=mask_binary,
         center_x=center_x,
@@ -326,8 +350,9 @@ def process_vessel_pipeline(
         unrolled,
         output_dir,
         save_plots=save_plots,
-        slide_id=slide_id
-        
+        slide_id=slide_id,
+        r_inner=mean_r_inner,
+        r_outer=mean_r_outer,
     )
 
 
@@ -345,7 +370,7 @@ def process_vessel_pipeline(
 
 ### EXECUTION ###
 
-SLIDE_ID = "2152"
+SLIDE_ID = "11743"
 
 start_time = time.perf_counter()
 

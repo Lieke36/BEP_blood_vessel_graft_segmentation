@@ -57,6 +57,7 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 import matplotlib.pyplot as plt
+import pandas as pd
 import time
 
 
@@ -1684,10 +1685,22 @@ def calculate_and_save_intensity_graphs(
     radial_bin_size: float = 10.0,
     create_graphs: bool = True,
 ):
-    """Create RGB intensity-vs-radius and intensity-vs-angle graphs."""
+    """Create grayscale intensity-vs-radius and intensity-vs-angle graphs."""
 
     if not create_graphs:
         return
+
+    csv_path = Path(__file__).parent.parent / "data" / "slides" / "tissue_slides.csv"
+    slide_data = pd.read_csv(csv_path)
+    slide_row = slide_data[slide_data["slide_id"] == int(slide_id)]
+
+    if slide_row.empty:
+        raise ValueError(f"Slide {slide_id} was not found in {csv_path}.")
+
+    pixel_size_um = slide_row.iloc[0]["pixel_size_um"]
+
+    if pd.isna(pixel_size_um):
+        raise ValueError(f"No pixel size available for slide {slide_id}.")
 
     h, w = tissue.shape[:2]
     cy, cx = target_center[1], target_center[0]
@@ -1703,8 +1716,11 @@ def calculate_and_save_intensity_graphs(
         & (radius <= r_outer)
     )
 
-    colors = ["red", "green", "blue"]
-    names = ["Red", "Green", "Blue"]
+    # Convert RGB tissue to grayscale
+    if tissue.ndim == 3:
+        tissue_gray = np.mean(tissue, axis=2)
+    else:
+        tissue_gray = tissue
 
     # --------------------------------------------------------
     # 1. INTENSITY VS RADIUS
@@ -1722,7 +1738,7 @@ def calculate_and_save_intensity_graphs(
     )
 
     radius_intensity = np.full(
-        (len(radii), 3),
+        len(radii),
         np.nan,
         dtype=np.float32,
     )
@@ -1737,9 +1753,8 @@ def calculate_and_save_intensity_graphs(
 
         if np.any(pixels):
             radius_intensity[i] = np.mean(
-                tissue[pixels],
-                axis=0,
-            )[:3]
+                tissue_gray[pixels]
+            )
 
     # Plot at the center of each radial bin
     radius_plot = (
@@ -1747,23 +1762,25 @@ def calculate_and_save_intensity_graphs(
         + radial_bin_size / 2
     )
 
+    # Convert pixel distance to physical distance
+    radius_plot_um = (
+        radius_plot * pixel_size_um
+    )
+
     plt.figure(figsize=(8, 5))
 
-    for ch, color in enumerate(colors):
-        plt.plot(
-            radius_plot,
-            radius_intensity[:, ch],
-            color=color,
-            label=names[ch],
-        )
+    plt.plot(
+        radius_plot_um,
+        radius_intensity,
+        color="black",
+    )
 
-    plt.xlabel("Radius / distance (pixels)")
+    plt.xlabel("Radius / distance (µm)")
     plt.ylabel("Average intensity")
     plt.title(
-        f"Average RGB intensity vs radius "
+        f"Average grayscale intensity vs radius "
         f"(bin size = {radial_bin_size:g} px)"
     )
-    plt.legend()
     plt.grid(alpha=0.3)
     plt.tight_layout()
 
@@ -1790,7 +1807,7 @@ def calculate_and_save_intensity_graphs(
     ) / 2
 
     angle_intensity = np.full(
-        (n_angle_bins, 3),
+        n_angle_bins,
         np.nan,
         dtype=np.float32,
     )
@@ -1805,25 +1822,21 @@ def calculate_and_save_intensity_graphs(
 
         if np.any(pixels):
             angle_intensity[i] = np.mean(
-                tissue[pixels],
-                axis=0,
-            )[:3]
+                tissue_gray[pixels]
+            )
 
     plt.figure(figsize=(8, 5))
 
-    for ch, color in enumerate(colors):
-        plt.plot(
-            angle_centers,
-            angle_intensity[:, ch],
-            color=color,
-            label=names[ch],
-        )
+    plt.plot(
+        angle_centers,
+        angle_intensity,
+        color="black",
+    )
 
     plt.xlabel("Angle (degrees)")
     plt.ylabel("Average intensity")
-    plt.title("Average RGB intensity vs angle")
+    plt.title("Average grayscale intensity vs angle")
     plt.xlim(0, 360)
-    plt.legend()
     plt.grid(alpha=0.3)
     plt.tight_layout()
 
@@ -1833,8 +1846,6 @@ def calculate_and_save_intensity_graphs(
         dpi=300,
     )
     plt.close()
-
-
 
 # ============================================================
 # MAIN PIPELINE
@@ -1967,7 +1978,7 @@ def process_fem_pipeline(
 # EXECUTION
 # ============================================================
 
-SLIDE_ID = "2152"
+SLIDE_ID = "11743"
 
 start_time = time.perf_counter()
 

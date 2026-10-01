@@ -24,7 +24,7 @@ Image.MAX_IMAGE_PIXELS = None
 
 ## Settings ##
 slides_dir = Path(r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides")
-slide_id = 2152
+slide_id = 11743
 
 
 ## Functions ##
