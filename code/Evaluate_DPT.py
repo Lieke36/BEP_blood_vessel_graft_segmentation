@@ -221,12 +221,12 @@ def download_predicted_mask(
     patch_nr,
     input_path,
     output_path,
-    model_path,
+    model,
+    device,
     threshold=THRESHOLD,
 ):
     input_path = Path(input_path)
     output_path = Path(output_path)
-    model_path = Path(model_path)
 
     tissue_path = input_path / (
         f"image_{slide_id}_patch_{patch_nr}_tissue.png"
@@ -248,9 +248,6 @@ def download_predicted_mask(
         raise FileNotFoundError(f"Ground-truth mask not found:\n{mask_path}")
 
     output_path.mkdir(parents=True, exist_ok=True)
-
-    device = get_device()
-    model = load_model(model_path, device)
 
     image = preprocess_image(tissue_path).to(device)
     ground_truth = load_ground_truth(mask_path).to(device)
@@ -341,6 +338,9 @@ if __name__ == "__main__":
         r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/models/dpt_n10000_bs8_ep50_10_80_10_DPT_best.pth"
     )
 
+    device = get_device()
+    model = load_model(MODEL_PATH, device)
+
     for slide in slide_id_list:
         for patch in patch_nr_list:
             download_predicted_mask(
@@ -348,6 +348,7 @@ if __name__ == "__main__":
                 patch_nr=patch,
                 input_path=INPUT_PATH,
                 output_path=OUTPUT_PATH,
-                model_path=MODEL_PATH,
+                model=model,
+                device=device,
                 threshold=THRESHOLD,
             )
