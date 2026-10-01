@@ -679,6 +679,15 @@ def download_predicted_mask(
 # Main
 # ============================================================
 
+# train_slide_id_list = [
+#     9943, 10010, 10210, 10143, 10315, 9972, 10174,
+#     10955, 10925, 11014, 10858, 11057, 11133, 10765, 
+#     10782, 10535, 10361, 10404, 10449, 10284, 10503, 
+#     11525, 11418, 11629, 7522, 80490, 80501, 80589
+# ]
+# test_slide_id_list = [2152, 11193, 10648, 11743, 80975, 80600]
+# val_slide_id_list = [10251, 11084, 10886, 11712, 11273, 80655]
+
 slide_id_list = [9943]
 patch_nr_list = [0, 104, 113, 126, 127]
 
@@ -689,11 +698,11 @@ if __name__ == "__main__":
     )
 
     OUTPUT_PATH = Path(
-        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/evaluation/dino_resnet50_n10000_bs8_ep50_34_33_33"
+        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/evaluation/dino_resnet50_n10000_bs8_ep50_34_33_33"
     )
 
     MODEL_PATH = Path(
-        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/models/dino_resnet50_n10000_bs8_ep50_34_33_33_DINO_best.pth"
+        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/models/dino_resnet50_n10000_bs8_ep50_34_33_33_DINO_best.pth"
     )
 
     for slide in slide_id_list:
