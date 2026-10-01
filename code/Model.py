@@ -64,7 +64,7 @@ from Losses_metrics import (
 # ------------------------------------------------------------
 
 TRAIN_DIR = Path(
-    r"/home/20234257/BEP_Project/External_data/training_10_80_80" # CHANGE #
+    r"/home/20234257/BEP_Project/External_data/training_10_80_10" # CHANGE #
 )
 
 VALIDATION_DIR = Path(
@@ -1434,7 +1434,7 @@ def run_initial_experiment(
 
     best_model_path = (
         MODEL_DIR
-        / f"{experiment_name}_10_80_80_best.pth"
+        / f"{experiment_name}_10_80_10_best.pth"
     )
 
     experiment_start = time.time()
@@ -1531,7 +1531,7 @@ def run_initial_experiment(
 
     history_path = (
         METRICS_DIR
-        / f"{experiment_name}_10_80_80_training_history.csv"
+        / f"{experiment_name}_10_80_10_training_history.csv"
     )
 
     history_df.to_csv(
@@ -1541,7 +1541,7 @@ def run_initial_experiment(
 
     plot_path = (
         VISUALIZATION_DIR
-        / f"{experiment_name}_10_80_80_training_curves.png"
+        / f"{experiment_name}_10_80_10_training_curves.png"
     )
 
     plot_training_history(
@@ -1578,7 +1578,7 @@ def run_initial_experiment(
     slide_summary_path = (
         METRICS_DIR
         / f"{experiment_name}"
-        f"_10_80_80_training_summary_slides.csv"
+        f"_10_80_10_training_summary_slides.csv"
     )
 
     slide_summary_df.to_csv(
@@ -1622,7 +1622,7 @@ def run_initial_experiment(
     summary_path = (
         METRICS_DIR
         / f"{experiment_name}"
-        f"_10_80_80_training_summary.csv"
+        f"_10_80_10_training_summary.csv"
     )
 
     summary_df.to_csv(
