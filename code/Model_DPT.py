@@ -33,7 +33,7 @@ from Losses_metrics import (
 # Configuration
 # ============================================================
 
-TRAIN_DIR = Path(r"/home/20234257/BEP_Project/External_data/training_34_33_33") # CHANGE #
+TRAIN_DIR = Path(r"/home/20234257/BEP_Project/External_data/training_10_80_10") # CHANGE #
 VALIDATION_DIR = Path(r"/home/20234257/BEP_Project/External_data/validation")
 RESULTS_DIR = Path(r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full")
 
@@ -613,7 +613,7 @@ def run_initial_experiment(
 
     best_model_path = (
         MODEL_DIR
-        / f"{experiment_name}_34_33_33_DPT_best.pth"
+        / f"{experiment_name}_10_80_10_DPT_best.pth"
     )
 
     experiment_start = time.time()
@@ -709,7 +709,7 @@ def run_initial_experiment(
 
     history_path = (
         METRICS_DIR
-        / f"{experiment_name}_34_33_33_DPT_training_history.csv"
+        / f"{experiment_name}_10_80_10_DPT_training_history.csv"
     )
 
     history_df.to_csv(
@@ -719,7 +719,7 @@ def run_initial_experiment(
 
     plot_path = (
         VISUALIZATION_DIR
-        / f"{experiment_name}_34_33_33_DPT_training_curves.png"
+        / f"{experiment_name}_10_80_10_DPT_training_curves.png"
     )
 
     plot_training_history(
@@ -754,7 +754,7 @@ def run_initial_experiment(
 
     slide_summary_path = (
         METRICS_DIR
-        / f"{experiment_name}_34_33_33_DPT_training_summary_slides.csv"
+        / f"{experiment_name}_10_80_10_DPT_training_summary_slides.csv"
     )
 
     slide_summary_df.to_csv(
@@ -798,7 +798,7 @@ def run_initial_experiment(
 
     summary_path = (
         METRICS_DIR
-        / f"{experiment_name}_34_33_33_DPT_training_summary.csv"
+        / f"{experiment_name}_10_80_10_DPT_training_summary.csv"
     )
 
     summary_df.to_csv(
