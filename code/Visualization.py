@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 
 repo_path = Path(__file__).resolve().parent.parent
 
-metric_path = repo_path / "results" / "metrics"             # Change to correct path #
-output_path = repo_path / "results" / "Visualizations"      # Change to correct path #
+metric_path = repo_path / "results_full" / "metrics"             # Change to correct path #
+output_path = repo_path / "results_full" / "visualizations"      # Change to correct path #
 
 output_path.mkdir(parents=True, exist_ok=True)
 
