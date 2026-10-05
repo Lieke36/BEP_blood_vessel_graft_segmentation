@@ -213,7 +213,7 @@ def predict_full_slide(
     # Save the complete binary prediction map.
     output_file = (
         output_path
-        / f"image_{slide_id}_model_1_edge_predicted.png" # CHANGE #
+        / f"image_{slide_id}_model_1_equal_predicted.png" # CHANGE #
     )
 
     Image.fromarray(
@@ -253,7 +253,7 @@ if __name__ == "__main__":
     )
 
     MODEL_PATH = Path(
-        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/models/n28000_bs8_ep50_10_80_10_best.pth" # CHANGE #
+        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/models/n28000_bs8_ep50_34_33_33_best.pth" # CHANGE #
     )
 
     # ---------------------------------------------------------
