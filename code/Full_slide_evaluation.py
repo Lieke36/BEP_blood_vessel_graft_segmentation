@@ -8,6 +8,10 @@ from PIL import Image
 import torch
 import segmentation_models_pytorch as smp
 
+from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
+
+
 ENCODER = "resnet34"
 IN_CHANNELS = 3
 CLASSES = 1
