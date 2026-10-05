@@ -49,7 +49,7 @@ IMG_SIZE = 512  # Native 512x512 input size (automatically padded to 532x532 int
 
 BATCH_SIZE = 8
 EPOCHS = 50
-SAMPLE_SIZE = 10000
+SAMPLE_SIZE = 28000
 LEARNING_RATE = 1e-4
 WEIGHT_DECAY = 1e-4
 THRESHOLD = 0.5
