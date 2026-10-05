@@ -1,0 +1,2 @@
+encoder,sample_size,validation_size,batch_size,epochs,learning_rate,weight_decay,threshold,best_epoch,best_val_dice,best_val_loss,best_val_sensitivity,best_val_precision,best_val_dice_background,best_val_dice_edge,best_val_dice_foreground,total_runtime_seconds
+resnet50,10000,24293,8,50,0.0001,0.0001,0.5,35,0.7757270237215349,0.6192140783010683,0.33460256643279107,0.3797628607807807,0.7526343039546837,0.5396647691616558,0.9542260033067095,41942.27147769928
