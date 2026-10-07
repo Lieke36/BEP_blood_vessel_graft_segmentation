@@ -1,2 +1,0 @@
-encoder,encoder_weights,sample_size,validation_size,batch_size,epochs,learning_rate,weight_decay,threshold,best_epoch,best_val_dice,best_val_loss,best_val_sensitivity,best_val_precision,total_runtime_seconds
-resnet34,imagenet,1000,2900,8,20,0.0001,0.0001,0.5,12,0.824816579168493,0.5240771724643378,0.22161867125580664,0.2958551316724746,1121.4211704730988
