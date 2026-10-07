@@ -4,7 +4,7 @@ Three different segmentation models were trained and evaluated using 512px by 51
 
 # Repository Structure
 ## Code
-The code/ folder contains the complete project pipeline:
+The `code/` folder contains the complete project pipeline:
 - Cytomine.py: Conversion of full Cytomine slides to usable slides.
 - Data_processing: Processing of data from slides to training, testing and validation patches.
 - Data_distribution: Utility script to find the data distribution of the random sampled patches.
@@ -21,7 +21,7 @@ The `data/` folder contains the csv files detailing the patches and slides used 
 - Validation: Validation patches information
 - Testing: Testing patches information
 ## Results
-The results/ folder contains the results obtained during model training and evaluation
+The `results/` folder contains the results obtained during model training and evaluation
 - Metrics: Folder with csv files of the training history metrics as well as model summaries and slide metrics
 - Visualizations: Folder containing the graphs of the training performance over the training epochs
 # Models
