@@ -284,7 +284,7 @@ def predict_full_slide(
 
     output_file = (
         output_path
-        / f"image_{slide_id}_model_2_random_predicted.png"
+        / f"image_{slide_id}_model_2_edge_predicted.png"
     )
 
     Image.fromarray(
@@ -324,7 +324,7 @@ if __name__ == "__main__":
     )
 
     MODEL_PATH = Path(
-        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/models/dpt_n28000_bs8_ep50_random_DPT_best.pth"
+        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/models/dpt_n28000_bs8_ep50_34_33_33_DPT_best.pth"
     )
 
     # ---------------------------------------------------------
