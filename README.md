@@ -35,7 +35,7 @@ Three different model architectures were made, trained and analysed:
 Three different types of spatial analysis methods where applied to the slides:
 - Distance transformation:
 - Polar transformation:
-- Finite Element Method transformation:
+- Finite Element Method (FEM) transformation:
 # Author
 L.M. van Dam
 
