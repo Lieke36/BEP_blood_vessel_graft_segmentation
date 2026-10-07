@@ -15,7 +15,7 @@ The code/ folder contains the complete project pipeline:
 - Transformation.py: scripts for the three spatial analysis implementations.
 The three models each have their own version of Model.py, Evaluate.py and Full_slide_evaluation.py
 ## Data
-The data/ folder contains the csv files detailing the patches and slides used during training, validating and testing the models.
+The 'data/' folder contains the csv files detailing the patches and slides used during training, validating and testing the models.
 - Slides: Whole-slide image information
 - Training: Training patches information
 - Validation: Validation patches information
