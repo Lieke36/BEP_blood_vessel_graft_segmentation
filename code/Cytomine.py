@@ -1,15 +1,24 @@
 ### Cytomine data extraction ###
-# make sure the code is applicable to HPC GPU/CPU -> currently doesn't work
 
-## libaries ##
-# IMPORTANT: run [pip install -r requirements.txt] in terminal using "python -m pip install -r requirements.txt"
+# What does Cytomine.py do?
+# Downloads annotated tissue slides and their corresponding binary masks from cytomine at approximately 10x magnification 
+# and saves the associated metadata as CSV files in folder data/slides/. When running the code, the terminal will ask for 
+# the public and private cytomine keys and for every slide you will have to input "yes" to continue to the next slide.
 
-import os
+# How to use Cytomine.py:
+# 1. Make sure all libraries specified in requirements.txt are installed
+# 2. Change variable HOST to correct hosting link of the Cytomine project
+# 3. Change variable PROJECT_ID to the correct project id of the Cytomine project
+# 4. Change variable OUTPUT_DIR to the correct output path where the slide images will be stored
+# 5. When running for the first time: Empty the list image_id_list_downloaded
+# 
+
+## libraries ##
+
 from pathlib import Path
 from getpass import getpass
 from math import ceil
 
-import pandas as pd
 from PIL import Image, ImageDraw
 from shapely import wkt
 from shapely.geometry import Polygon, MultiPolygon
@@ -40,7 +49,6 @@ def get_image_group_images(project_id, group_name="Annotated"):
     return list(
         ImageInstanceCollection().fetch_with_filter("imagegroup", group.id)
     )
-
 
 
 def _draw_geometry_on_mask(
@@ -147,7 +155,6 @@ def _draw_geometry_on_mask(
         )
 
 
-
 def download_slides(
     project_id,
     margin=0.1,
@@ -241,8 +248,6 @@ def download_slides(
     # ---------------------------------------------------------
     # Find target and Lumen terms
     # ---------------------------------------------------------
-
-    from cytomine.models import TermCollection
 
     terms = TermCollection().fetch_with_filter(
         "project", project_id
@@ -873,8 +878,6 @@ def download_slides(
     return tissue_rows, mask_rows
 
 
-
-
 ## connect to cytomine ##
 
 HOST = "http://131.155.65.159:8080/"
@@ -902,18 +905,7 @@ for image in annotated_images:
 
 ## download full annotated images and masks ##
 
-image_id_list_downloaded = [
-    10955, 2152, 10535, 10925, 11712, 9943, 10010, 7522,
-    11525, 11014, 10210, 10858, 10886, 11057, 11084,
-    11273, 10251, 10103, 10315, 9972, 10174, 10361, 10143,
-    11133, 10648, 10765, 10782, 11193, 11418, 11629, 11743,
-    80490, 80501, 80589, 80600, 80655, 80975, 10404, 10449,
-    10284, 10503,
-]
-
-# 40/43 downloaded
-# image 2143 wont work because there is no "Tissue area" annotations
-# image 10064 and 10103 have fully black masks (line annotation instead of area)
+image_id_list_downloaded = [] # If Downloading the slides not all at once, input the already downloaded slides here to reduce time
 
 new_image_ids = []
 

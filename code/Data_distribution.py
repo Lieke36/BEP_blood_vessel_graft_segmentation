@@ -1,22 +1,29 @@
 ### Data distribution ###
 
+# What does Data_distribution.py do?
+# Calculates the ratio of background/edge/foreground patches of a folder with tissue/mask patches, the results will be printed in terminal.
+
+# How to use Data_distribution?
+# 1. Make sure all libraries specified in requirements.txt are installed
+# 2. Change MASK_PATH to the correct path to the folder containing the patches
+
+
+## libraries ##
+
 from pathlib import Path
 from PIL import Image
 import numpy as np
 
 
-# ============================================================
-# Configuration
-# ============================================================
+## Configuration ##
 
 MASK_PATH = Path(
     r"/home/20234257/BEP_Project/External_data/validation"
 )
 
 
-# ============================================================
-# Count mask types
-# ============================================================
+
+## Count mask types ##
 
 fully_background = 0
 fully_foreground = 0
@@ -24,64 +31,36 @@ mixed = 0
 
 total_masks = 0
 
-
-# ============================================================
-# Loop through masks
-# ============================================================
+## Loop through masks ##
 
 for mask_path in MASK_PATH.glob("*_mask.png"):
 
-    mask = np.asarray(
-        Image.open(mask_path).convert("L")
-    )
+    mask = np.asarray(Image.open(mask_path).convert("L"))
 
     total_masks += 1
 
-    # --------------------------------------------------------
     # Fully background
-    # --------------------------------------------------------
-
     if np.all(mask == 0):
-
         fully_background += 1
 
-    # --------------------------------------------------------
     # Fully foreground
-    # --------------------------------------------------------
-
     elif np.all(mask == 255):
-
         fully_foreground += 1
 
-    # --------------------------------------------------------
     # Contains both background and foreground
-    # --------------------------------------------------------
-
     else:
-
         mixed += 1
 
 
-# ============================================================
-# Calculate percentages
-# ============================================================
+## Calculate percentages ##
 
-background_percentage = (
-    fully_background / total_masks * 100
-)
+background_percentage = (fully_background / total_masks * 100)
 
-foreground_percentage = (
-    fully_foreground / total_masks * 100
-)
+foreground_percentage = (fully_foreground / total_masks * 100)
 
-mixed_percentage = (
-    mixed / total_masks * 100
-)
+mixed_percentage = (mixed / total_masks * 100)
 
-
-# ============================================================
-# Print results
-# ============================================================
+## Print results ##
 
 print("=" * 60)
 print("MASK DISTRIBUTION")
