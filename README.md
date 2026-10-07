@@ -25,7 +25,7 @@ The `results/` folder contains the results obtained during model training and ev
 - `Metrics`: Folder with csv files of the training history metrics as well as model summaries and slide metrics
 - `Visualizations`: Folder containing the graphs of the training performance over the training epochs
 ## Requirements
-Install the required libraries specified in `Requirements.txt`.
+Install the required libraries specified in `requirements.txt`.
 # Models
 Three different model architectures were made, trained and analysed:
 - Model 1 (standard): U-Net with ResNet34 encoder using pretrained weights from ImageNet
