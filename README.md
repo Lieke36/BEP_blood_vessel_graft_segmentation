@@ -33,9 +33,9 @@ Three different model architectures were made, trained and analysed:
 - Model 3 (DINO): U-Net with ResNet50 encoder using DINOv1 pretrained weights
 # Spatial Analysis Transforms
 Three different types of spatial analysis methods where applied to the slides:
-- Distance transform:
-- Polar transform:
-- Finite Element Method transform:
+- Distance transformation:
+- Polar transformation:
+- Finite Element Method transformation:
 # Author
 L.M. van Dam
 
