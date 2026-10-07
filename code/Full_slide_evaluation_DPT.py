@@ -284,7 +284,7 @@ def predict_full_slide(
 
     output_file = (
         output_path
-        / f"image_{slide_id}_model_2_edge_predicted.png"
+        / f"image_{slide_id}_model_2_equal_predicted.png"
     )
 
     Image.fromarray(
