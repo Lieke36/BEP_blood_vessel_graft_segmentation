@@ -1,5 +1,5 @@
 ### full slide evaluate ###
-# (for model 2 - DINO ResNet-50)
+# (for model 3 - DINO ResNet-50)
 
 from pathlib import Path
 import csv
