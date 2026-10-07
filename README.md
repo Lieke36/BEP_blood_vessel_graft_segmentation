@@ -34,8 +34,8 @@ Three different model architectures were made, trained and analysed:
 # Spatial Analysis Transforms
 Three different types of spatial analysis methods where applied to the slides:
 - Distance transformation: Implementation of tissue intensity as a function of distance from lumen
-- Polar transformation:
-- Finite Element Method (FEM) transformation:
+- Polar transformation: Implementation of tissue intensity as a function of normalized tissue thickness and angle using a polar representation
+- Finite Element Method (FEM) transformation: Implementation of tissue intensity as a function of distance to center of tissue and angle using a FEM transformation
 # Author
 L.M. van Dam
 
