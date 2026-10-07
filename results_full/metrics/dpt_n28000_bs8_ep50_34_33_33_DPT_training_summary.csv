@@ -1,0 +1,2 @@
+encoder,encoder_weights,sample_size,validation_size,batch_size,epochs,learning_rate,weight_decay,threshold,best_epoch,best_val_dice,best_val_loss,best_val_sensitivity,best_val_precision,best_val_dice_background,best_val_dice_edge,best_val_dice_foreground,total_runtime_seconds
+vit_small_patch14_dinov2.lvd142m,True,28000,24293,8,50,0.0001,0.0001,0.5,40,0.9009226947178918,0.2652724994636778,0.3470952707894559,0.37605784964846967,0.9336160231918623,0.5380651698766238,0.9661364961388963,138711.7945046425
