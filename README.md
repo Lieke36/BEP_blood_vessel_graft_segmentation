@@ -31,7 +31,7 @@ Three different model architectures were made, trained and analysed:
 - Model 1 (standard): U-Net with ResNet34 encoder using pretrained weights from ImageNet
 - Model 2 (DPT): Custom ViT-DPT architecture using DINOv2 pretrained weights
 - Model 3 (DINO): U-Net with ResNet50 encoder using DINOv1 pretrained weights
-# Spatial analysis transforms
+# Spatial Analysis Transforms
 Three different types of spatial analysis methods where applied to the slides:
 - Distance transform:
 - Polar transform:
