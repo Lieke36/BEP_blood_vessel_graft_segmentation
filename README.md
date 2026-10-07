@@ -24,13 +24,13 @@ The `data/` folder contains the csv files detailing the patches and slides used 
 The `results/` folder contains the results obtained during model training and evaluation
 - `Metrics`: Folder with csv files of the training history metrics as well as model summaries and slide metrics
 - `Visualizations`: Folder containing the graphs of the training performance over the training epochs
+## Requirements
+Install the required libraries specified in `Requirements.txt`.
 # Models
 Three different model architectures were made, trained and analysed:
 - Model 1 (standard): U-Net with ResNet34 encoder using pretrained weights from ImageNet
 - Model 2 (DPT): Custom ViT-DPT architecture using DINOv2 pretrained weights
 - Model 3 (DINO): U-Net with ResNet50 encoder using DINOv1 pretrained weights
-# Requirements
-Install the required libraries specified in Requirements.txt
 # Author
 L.M. van Dam
 
