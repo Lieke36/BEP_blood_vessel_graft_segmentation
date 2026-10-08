@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 
 repo_path = Path(__file__).resolve().parent.parent
 
-metric_path = repo_path / "results" / "metrics"             # Change to correct path #
-output_path = repo_path / "results" / "Visualizations"      # Change to correct path #
+metric_path = repo_path / "results_full" / "metrics"             # Change to correct path #
+output_path = repo_path / "results_full" / "Visualizations"      # Change to correct path #
 
 output_path.mkdir(parents=True, exist_ok=True)
 
@@ -15,24 +15,24 @@ model_csv_list = [
     #metric_path / "n28000_bs8_ep50_random_training_history.csv",
     #metric_path / "n28000_bs8_ep50_34_33_33_training_history.csv",
     #metric_path / "n28000_bs8_ep50_10_80_10_training_history.csv",
-    #metric_path / "dpt_n28000_bs8_ep50_random_training_history.csv",
-    #metric_path / "dpt_n28000_bs8_ep50_34_33_33_training_history.csv",
-    #metric_path / "dpt_n28000_bs8_ep50_10_80_10_training_history.csv",
-    metric_path / "dino_resnet50_n28000_bs8_ep50_random_training_history.csv",
-    metric_path / "dino_resnet50_n28000_bs8_ep50_34_33_33_training_history.csv",
-    metric_path / "dino_resnet50_n28000_bs8_ep50_10_80_10_training_history.csv",
+    #metric_path / "dpt_n28000_bs8_ep50_random_DPT_training_history.csv",
+    #metric_path / "dpt_n28000_bs8_ep50_34_33_33_DPT_training_history.csv",
+    #metric_path / "dpt_n28000_bs8_ep50_10_80_10_DPT_training_history.csv",
+    metric_path / "dino_resnet50_n28000_bs8_ep50_random_DINO_training_history.csv",
+    metric_path / "dino_resnet50_n28000_bs8_ep50_34_33_33_DINO_training_history.csv",
+    metric_path / "dino_resnet50_n28000_bs8_ep50_10_80_10_DINO_training_history.csv",
 ]
 
 model_metric_csv_list = [
     #metric_path / "n28000_bs8_ep50_random_training_summary.csv",
     #metric_path / "n28000_bs8_ep50_34_33_33_training_summary.csv",
     #metric_path / "n28000_bs8_ep50_10_80_10_training_summary.csv",
-    #metric_path / "dpt_n28000_bs8_ep50_random_training_summary.csv",
-    #metric_path / "dpt_n28000_bs8_ep50_34_33_33_training_summary.csv",
-    #metric_path / "dpt_n28000_bs8_ep50_10_80_10_training_summary.csv",
-    metric_path / "dino_resnet50_n28000_bs8_ep50_random_training_summary.csv",
-    metric_path / "dino_resnet50_n28000_bs8_ep50_34_33_33_training_summary.csv",
-    metric_path / "dino_resnet50_n28000_bs8_ep50_10_80_10_training_summary.csv",
+    #metric_path / "dpt_n28000_bs8_ep50_random_DPT_training_summary.csv",
+    #metric_path / "dpt_n28000_bs8_ep50_34_33_33_DPT_training_summary.csv",
+    #metric_path / "dpt_n28000_bs8_ep50_10_80_10_DPT_training_summary.csv",
+    metric_path / "dino_resnet50_n28000_bs8_ep50_random_DINO_training_summary.csv",
+    metric_path / "dino_resnet50_n28000_bs8_ep50_34_33_33_DINO_training_summary.csv",
+    metric_path / "dino_resnet50_n28000_bs8_ep50_10_80_10_DINO_training_summary.csv",
 ]
 
 model_label_list = [
@@ -68,7 +68,12 @@ def combine_graph(model_csv_list, model_label_list):
         "val_precision",
     ]
 
-    for csv_path, model_label in zip(model_csv_list, model_label_list):
+    # Give each model its own color
+    colors = plt.cm.tab10.colors
+
+    for i, (csv_path, model_label) in enumerate(
+        zip(model_csv_list, model_label_list)
+    ):
         csv_path = Path(csv_path)
 
         if not csv_path.exists():
@@ -86,27 +91,37 @@ def combine_graph(model_csv_list, model_label_list):
                 f"Missing columns in {csv_path}: {missing_columns}"
             )
 
+        color = colors[i % len(colors)]
+
+        # Dice
         dice_ax.plot(
             data["epoch"],
             data["train_dice"],
             label=f"{model_label} - Train",
+            color=color,
+            linestyle="-",
         )
         dice_ax.plot(
             data["epoch"],
             data["val_dice"],
             label=f"{model_label} - Validation",
+            color=color,
             linestyle="--",
         )
 
+        # Loss
         loss_ax.plot(
             data["epoch"],
             data["train_loss"],
             label=f"{model_label} - Train",
+            color=color,
+            linestyle="-",
         )
         loss_ax.plot(
             data["epoch"],
             data["val_loss"],
             label=f"{model_label} - Validation",
+            color=color,
             linestyle="--",
         )
 
