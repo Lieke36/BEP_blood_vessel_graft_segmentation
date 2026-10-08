@@ -13,6 +13,7 @@ The `code/` folder contains the complete project pipeline:
 - `Evaluate.py`: Extraction of (sigmoid) prediction mask of patches using the three trained models.
 - `Full_slide_evaluation.py`: Extraction of prediction mask of full slide using the three trained models.
 - `Transformation.py`: scripts for the three spatial analysis implementations.
+- `Visualization.py`: Utility script to make graphs and bar plots to visualize and compare models.
 The three models each have their own version of Model.py, Evaluate.py and Full_slide_evaluation.py
 ## Data
 The `data/` folder contains the csv files detailing the patches and slides used during training, validating and testing the models.
