@@ -111,7 +111,7 @@ EPOCHS = 50 # use 20 for initial
 
 SAMPLE_SIZE = 28000 # use 1000 for initial
 
-LEARNING_RATE = 1e-3
+LEARNING_RATE = 1e-5
 
 WEIGHT_DECAY = 1e-4
 
