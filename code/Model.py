@@ -111,9 +111,9 @@ EPOCHS = 50 # use 20 for initial
 
 SAMPLE_SIZE = 28000 # use 1000 for initial
 
-LEARNING_RATE = 1e-5
+LEARNING_RATE = 1e-4
 
-WEIGHT_DECAY = 1e-4
+WEIGHT_DECAY = 1e-3
 
 THRESHOLD = 0.5
 
@@ -1347,6 +1347,7 @@ def run_initial_experiment(
         f"_bs{batch_size}"
         f"_ep{epochs}"
         f"_lr{learning_rate}"
+        f"_wd{weight_decay}"
     )
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
