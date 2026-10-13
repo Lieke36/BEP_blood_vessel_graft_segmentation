@@ -21,8 +21,10 @@ model_csv_list = [
     #metric_path / "dino_resnet50_n28000_bs8_ep50_random_DINO_training_history.csv",
     #metric_path / "dino_resnet50_n28000_bs8_ep50_34_33_33_DINO_training_history.csv",
     #metric_path / "dino_resnet50_n28000_bs8_ep50_10_80_10_DINO_training_history.csv",
-    metric_path / "n28000_bs8_ep50_lr0.001_10_80_10_training_history.csv",
-    metric_path / "n28000_bs8_ep50_lr1e-05_10_80_10_training_history.csv",
+    #metric_path / "n28000_bs8_ep50_lr0.001_10_80_10_training_history.csv",
+    #metric_path / "n28000_bs8_ep50_lr1e-05_10_80_10_training_history.csv",
+    metric_path / "n28000_bs8_ep50_lr0.0001_wd0.001_10_80_10_training_history.csv",
+    metric_path / "n28000_bs8_ep50_lr0.0001_wd1e-05_10_80_10_training_history.csv",
 ]
 
 model_metric_csv_list = [
@@ -35,8 +37,10 @@ model_metric_csv_list = [
     #metric_path / "dino_resnet50_n28000_bs8_ep50_random_DINO_training_summary.csv",
     #metric_path / "dino_resnet50_n28000_bs8_ep50_34_33_33_DINO_training_summary.csv",
     #metric_path / "dino_resnet50_n28000_bs8_ep50_10_80_10_DINO_training_summary.csv",
-    metric_path / "n28000_bs8_ep50_lr0.001_10_80_10_training_summary.csv",
-    metric_path / "n28000_bs8_ep50_lr1e-05_10_80_10_training_summary.csv",
+    #metric_path / "n28000_bs8_ep50_lr0.001_10_80_10_training_summary.csv",
+    #metric_path / "n28000_bs8_ep50_lr1e-05_10_80_10_training_summary.csv",
+    metric_path / "n28000_bs8_ep50_lr0.0001_wd0.001_10_80_10_training_summary.csv",
+    metric_path / "n28000_bs8_ep50_lr0.0001_wd1e-05_10_80_10_training_summary.csv",
 ]
 
 model_label_list = [
@@ -49,8 +53,10 @@ model_label_list = [
     #"Model_3_random",
     #"Model_3_equal",
     #"Model_3_edge",
-    "Model_1_edge_LR=1e-3",
-    "Model_1_edge_LR=1e-5",
+    #"Model_1_edge_LR=1e-3",
+    #"Model_1_edge_LR=1e-5",
+    "Model_1_edge_WD=1e-3",
+    "Model_1_edge_WD=1e-5",
 ]
 
 def combine_graph(model_csv_list, model_label_list):
