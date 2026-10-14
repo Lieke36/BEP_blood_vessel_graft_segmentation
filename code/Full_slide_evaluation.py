@@ -213,7 +213,7 @@ def predict_full_slide(
     # Save the complete binary prediction map.
     output_file = (
         output_path
-        / f"image_{slide_id}_model_1_edge_4_5_predicted.png" # CHANGE #
+        / f"image_{slide_id}_model_1_edge_testset_predicted.png" # CHANGE #
     )
 
     Image.fromarray(
@@ -234,18 +234,18 @@ if __name__ == "__main__":
     # Configuration
     # ---------------------------------------------------------
 
-    SLIDE_ID_LIST = [10251, 11084, 11273, 11712, 80655]
+    SLIDE_ID_LIST = [10648, 11193, 11743, 2152, 80600, 80975]
 
     SLIDES_DIR = Path(
         r"/home/20234257/BEP_Project/External_data/slides"
     )
 
     PATCH_DIR = Path(
-        r"/home/20234257/BEP_Project/External_data/validation"
+        r"/home/20234257/BEP_Project/External_data/testing"
     )
 
     PATCH_CSV = Path(
-        r"data/validation/validation_tissue_patches.csv"
+        r"data/test/test_tissue_patches.csv"
     )
 
     OUTPUT_PATH = Path(
@@ -253,7 +253,7 @@ if __name__ == "__main__":
     )
 
     MODEL_PATH = Path(
-        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/models/n28000_bs8_ep50_lr0.0001_wd1e-05_10_80_10_best.pth" # CHANGE #
+        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/models/n28000_bs8_ep50_10_80_10_best.pth" # CHANGE #
     )
 
     # ---------------------------------------------------------
