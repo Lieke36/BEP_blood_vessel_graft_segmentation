@@ -29,7 +29,7 @@ MODEL_PATH = Path(
 )
 
 TRAINING_SUMMARY_PATH = Path(
-    "/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/metricsn28000_bs8_ep50_10_80_10_training_summary.csv"
+    "/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/metrics/n28000_bs8_ep50_10_80_10_training_summary.csv"
 )
 
 TEST_DIR = Path(
