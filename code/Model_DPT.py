@@ -1,39 +1,40 @@
 ### Model DPT ###
 
+# What does Model_DPT.py do?
+# This script trains a model with model architecture of model 2 (DPT + DINOv2 initialization) using training patches of 512px by 512px. Each training epoch, it prints the training and validation dice and loss scores. 
+# After the nr of epochs specified in variable EPOCHS it saves the model performance in csv files, as well as a graph on the dice and loss functions during training. The model is evaluated on overall dice score, dice score per patch type and dice score per slide.
+# It also saves the best performing model parameters.
 
-# ============================================================
-# Model_DPT.py - Custom ViT-DPT Implementation (Option 1: 512x512)
-# ============================================================
+# How to use Model_DPT.py?
+# 1. Set the paths: TRAIN_DIR should go to the folder containing all training tissue and mask patches, VALIDATION_DIR should go to the folder containing all validation tissue and mask patches, RESULTS_DIR should go to the 'results' folder where all results are stored.
+# 2. Change the training parameters if needed
+
+
+## Libraries ##
 
 from pathlib import Path
 import random
 import time
 import re
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
 from PIL import Image
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
-
 import timm
-
 from Losses_metrics import (
     BCEDiceLoss,
     calculate_metrics,
 )
 
 
-# ============================================================
-# Configuration
-# ============================================================
 
-TRAIN_DIR = Path(r"/home/20234257/BEP_Project/External_data/training_random") # CHANGE #
+## Paths ##
+
+TRAIN_DIR = Path(r"/home/20234257/BEP_Project/External_data/training_random")
 VALIDATION_DIR = Path(r"/home/20234257/BEP_Project/External_data/validation")
 RESULTS_DIR = Path(r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full")
 
@@ -41,11 +42,14 @@ MODEL_DIR = RESULTS_DIR / "models"
 METRICS_DIR = RESULTS_DIR / "metrics"
 VISUALIZATION_DIR = RESULTS_DIR / "visualizations"
 
-# Custom ViT-DPT Configuration
+## Custom ViT-DPT Configuration ##
+
 ENCODER = "vit_small_patch14_dinov2.lvd142m"
 ENCODER_WEIGHTS = True
 CLASSES = 1
 IMG_SIZE = 512  # Native 512x512 input size (automatically padded to 532x532 internally)
+
+## Training parameters ##
 
 BATCH_SIZE = 8
 EPOCHS = 50
@@ -59,9 +63,9 @@ PIN_MEMORY = True
 RANDOM_SEED = 42
 
 
-# ============================================================
+
 # Model Architecture (Custom ViT-DPT)
-# ============================================================
+
 
 class CustomViTDPT(nn.Module):
     """
@@ -144,9 +148,9 @@ class CustomViTDPT(nn.Module):
         return out
 
 
-# ============================================================
+
 # Reproducibility & Device Setup
-# ============================================================
+
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -168,9 +172,9 @@ def get_device():
     return device
 
 
-# ============================================================
-# Dataset
-# ============================================================
+
+## Dataset ##
+
 
 class SegmentationDataset(Dataset):
     def __init__(self, image_paths, mask_paths, img_size=IMG_SIZE):
@@ -207,9 +211,7 @@ class SegmentationDataset(Dataset):
         return image, mask
 
 
-# ============================================================
-# Helper Functions
-# ============================================================
+## Helper Functions ##
 
 def find_pairs(directory, sample_size=None, seed=42):
     directory = Path(directory)
@@ -448,9 +450,7 @@ def evaluate_validation_by_slide(
 
     return pd.DataFrame(results)
 
-# ============================================================
-# Training Logic
-# ============================================================
+## Training Logic ##
 
 def train_one_epoch(model, loader, optimizer, criterion, device, threshold=0.5):
     model.train()
@@ -530,9 +530,7 @@ def plot_training_history(history, output_path):
     plt.close()
 
 
-# ============================================================
-# Main Experiment Execution
-# ============================================================
+## Main Experiment Execution ##
 
 def run_initial_experiment(
     batch_size=BATCH_SIZE,

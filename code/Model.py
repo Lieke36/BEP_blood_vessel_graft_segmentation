@@ -1,67 +1,34 @@
 ### Model ###
-# make sure it is applicable on the HPC GPU/CPU
 
+# What does Model.py do?
+# This script trains a model with model architecture of model 1 (U-Net resnet34 + ImageNet initialization) using training patches of 512px by 512px. Each training epoch, it prints the training and validation dice and loss scores. 
+# After the nr of epochs specified in variable EPOCHS it saves the model performance in csv files, as well as a graph on the dice and loss functions during training. The model is evaluated on overall dice score, dice score per patch type and dice score per slide.
+# It also saves the best performing model parameters.
 
-## create initial model ##
+# How to use Model.py?
+# 1. Set the paths: TRAIN_DIR should go to the folder containing all training tissue and mask patches, VALIDATION_DIR should go to the folder containing all validation tissue and mask patches, RESULTS_DIR should go to the 'results' folder where all results are stored.
+# 2. Change the training parameters if needed
 
-
-
-## function that trains 1 model (1 trial) for all possible parameters ##
-# Batch_size
-# epochs
-# encoder
-# learning rate
-# weight decay
-# stain augmentation (true/false)
-# threshold (use threshold function from train.py)
-# -> summary results
-
-## create initial model ##
-
-
-## function to check runtime for different epochs, batchsize and sample size ##
-
-
-## function to check performance across validation slides ##
-# see if validation performance varies a lot across slides
-# check which slides are difficult to segment (low performance)
-
-
-# (after intuition model building parameters: epochs, batchsize and sample size are decided)
-
-# ============================================================
-# Libraries
-# ============================================================
+## Libraries ##
 
 from pathlib import Path
 import random
 import time
 import re
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
 from PIL import Image
-
 import torch
 from torch.utils.data import Dataset, DataLoader
-
 import segmentation_models_pytorch as smp
-
 from Losses_metrics import (
     BCEDiceLoss,
     calculate_metrics,
 )
 
 
-# ============================================================
-# Configuration
-# ============================================================
-
-# ------------------------------------------------------------
-# Paths
-# ------------------------------------------------------------
+## Paths ##
 
 TRAIN_DIR = Path(
     r"/home/20234257/BEP_Project/External_data/training_10_80_10" # CHANGE #
@@ -72,7 +39,7 @@ VALIDATION_DIR = Path(
 )
 
 RESULTS_DIR = Path(
-    r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full" 
+    r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results" 
 )
 
 MODEL_DIR = (
@@ -88,55 +55,32 @@ VISUALIZATION_DIR = (
 )
 
 
-# ------------------------------------------------------------
-# Model parameters
-# ------------------------------------------------------------
+
+## Model parameters ##
 
 ENCODER = "resnet34"
-
 ENCODER_WEIGHTS = "imagenet"
-
 IN_CHANNELS = 3
-
 CLASSES = 1
 
 
-# ------------------------------------------------------------
-# Training parameters
-# ------------------------------------------------------------
 
-BATCH_SIZE = 8  # use 4 for initial
+## Training parameters ##
 
-EPOCHS = 50 # use 20 for initial
-
-SAMPLE_SIZE = 28000 # use 1000 for initial
-
+BATCH_SIZE = 8 
+EPOCHS = 50
+SAMPLE_SIZE = 28000
 LEARNING_RATE = 1e-4
-
-WEIGHT_DECAY = 1e-5
-
+WEIGHT_DECAY = 1e-4
 THRESHOLD = 0.5
 
-
-# ------------------------------------------------------------
-# DataLoader parameters
-# ------------------------------------------------------------
-
 NUM_WORKERS = 4 # use 0 for initial
-
 PIN_MEMORY = True
-
-
-# ------------------------------------------------------------
-# Reproducibility
-# ------------------------------------------------------------
-
 RANDOM_SEED = 42
 
 
-# ============================================================
-# Reproducibility
-# ============================================================
+
+## Reproducibility function ##
 
 def set_seed(seed=42):
     """
@@ -161,9 +105,7 @@ def set_seed(seed=42):
         torch.backends.cudnn.benchmark = False
 
 
-# ============================================================
-# Device
-# ============================================================
+## Device ##
 
 def get_device():
     """
@@ -209,9 +151,7 @@ def get_device():
     return device
 
 
-# ============================================================
-# Dataset
-# ============================================================
+## Dataset ##
 
 class SegmentationDataset(Dataset):
     """
@@ -413,9 +353,7 @@ class SegmentationDataset(Dataset):
         return image, mask
 
 
-# ============================================================
-# Find training image/mask pairs
-# ============================================================
+## Find training image/mask pairs ##
 
 def find_training_pairs(
     directory,
@@ -567,9 +505,7 @@ def find_training_pairs(
     )
 
 
-# ============================================================
-# Find validation image/mask pairs
-# ============================================================
+## Find validation image/mask pairs ##
 
 def find_validation_pairs(
     directory
@@ -657,9 +593,7 @@ def find_validation_pairs(
     )
 
 
-# ============================================================
-# Extract slide ID from validation filename
-# ============================================================
+## Extract slide ID from validation filename ##
 
 def extract_slide_id(
     image_path
@@ -699,9 +633,7 @@ def extract_slide_id(
     return match.group(1)
 
 
-# ============================================================
-# Create model
-# ============================================================
+## Create model ##
 
 def create_model(
     encoder_name="resnet34",
@@ -732,9 +664,7 @@ def create_model(
     return model
 
 
-# ============================================================
-# Create DataLoaders
-# ============================================================
+## Create DataLoaders ##
 
 def create_dataloaders(
     train_dataset,
@@ -774,9 +704,7 @@ def create_dataloaders(
     )
 
 
-# ============================================================
-# Training epoch
-# ============================================================
+## Training epoch ##
 
 def train_one_epoch(
     model,
@@ -868,9 +796,7 @@ def train_one_epoch(
     return epoch_loss
 
 
-# ============================================================
-# Validation epoch
-# ============================================================
+## Validation epoch ##
 
 def validate_one_epoch(
     model,
@@ -1001,9 +927,7 @@ def validate_one_epoch(
     return results
 
 
-# ============================================================
-# Evaluate training Dice
-# ============================================================
+## Evaluate training Dice ##
 
 def evaluate_training_dice(
     model,
@@ -1056,9 +980,7 @@ def evaluate_training_dice(
     )
 
 
-# ============================================================
-# Evaluate validation metrics per slide
-# ============================================================
+## Evaluate validation metrics per slide ##
 
 def evaluate_validation_by_slide(
     model,
@@ -1214,9 +1136,7 @@ def evaluate_validation_by_slide(
 
     return pd.DataFrame(results)
 
-# ============================================================
-# Save training curves
-# ============================================================
+## Save training curves ##
 
 def plot_training_history(
     history,
@@ -1328,9 +1248,7 @@ def plot_training_history(
     plt.close()
 
 
-# ============================================================
-# Main training function
-# ============================================================
+## Main training function ##
 
 def run_initial_experiment(
     batch_size=BATCH_SIZE,
@@ -1664,9 +1582,7 @@ def run_initial_experiment(
     }
 
 
-# ============================================================
-# Main
-# ============================================================
+## Main ##
 
 if __name__ == "__main__":
 

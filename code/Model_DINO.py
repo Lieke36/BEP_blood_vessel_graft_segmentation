@@ -1,39 +1,48 @@
 ### Model DINO ###
 
+# What does Model_DPT.py do?
+# This script trains a model with model architecture of model 3 (U-Net resnet50 + DINOv1 initialization) using training patches of 512px by 512px. Each training epoch, it prints the training and validation dice and loss scores. 
+# After the nr of epochs specified in variable EPOCHS it saves the model performance in csv files, as well as a graph on the dice and loss functions during training. The model is evaluated on overall dice score, dice score per patch type and dice score per slide.
+# It also saves the best performing model parameters.
+
+# How to use Model_DPT.py?
+# 1. Set the paths: TRAIN_DIR should go to the folder containing all training tissue and mask patches, VALIDATION_DIR should go to the folder containing all validation tissue and mask patches, RESULTS_DIR should go to the 'results' folder where all results are stored.
+# 2. Change the training parameters if needed
+
+## Libraries ##
+
 from pathlib import Path
 import random
 import time
 import re
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
 from PIL import Image
-
 import torch
 from torch.utils.data import Dataset, DataLoader
-
 import segmentation_models_pytorch as smp
-
 from Losses_metrics import (
     BCEDiceLoss,
     calculate_metrics,
 )
 
-# Configuration
+
+## Paths ##
 TRAIN_DIR = Path(r"/home/20234257/BEP_Project/External_data/training_random") # CHANGE #
 VALIDATION_DIR = Path(r"/home/20234257/BEP_Project/External_data/validation")
-RESULTS_DIR = Path(r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full")
+RESULTS_DIR = Path(r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results")
 
 MODEL_DIR = RESULTS_DIR / "models"
 METRICS_DIR = RESULTS_DIR / "metrics"
 VISUALIZATION_DIR = RESULTS_DIR / "visualizations"
 
+## Model parameters ##
 ENCODER = "resnet50"
 IN_CHANNELS = 3
 CLASSES = 1
 
+## Training parameters ##
 BATCH_SIZE = 8
 EPOCHS = 50
 SAMPLE_SIZE = 28000
@@ -44,6 +53,8 @@ THRESHOLD = 0.5
 NUM_WORKERS = 4
 PIN_MEMORY = True
 RANDOM_SEED = 42
+
+## Functions ##
 
 def set_seed(seed=42):
     random.seed(seed)
