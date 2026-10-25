@@ -1,6 +1,6 @@
 ## Distance transformation ##
 
-# functionality
+# What does Distance_transformation.py do?
 # part 1 : Take binary image mask (png file with name: image_{slide_id}_mask) with Background (black), tissue (white), Lumen (black). 
 # Assume lumen is surrounded by tissue, and tissue is surrounded by background. Use distance_transform_edt (scipy) to create distance map,
 # with first: lumen = black, tissue and background = value dependent on pixel distance to lumen, 
@@ -9,7 +9,9 @@
 # part 2: Use image tissue belonging to the mask (png file with name: image_{slide_id}_tissue) to make a graph with 
 # on y-as: distance to lumen and on x-as mean pixel intensity
 
-# setup?
+# How to use Distance_transformation.py?
+# 1. Set the slides_dir variable to the folder path that contains all the slide tissue and mask images.
+# 2. Set slide_id variable to the slide id of the slide that will be analysed using distance transform
 
 ## libraries ##
 import numpy as np
@@ -28,11 +30,14 @@ slide_id = 11743
 
 
 ## Functions ##
+
 def load_mask(path):
+    """Load a mask image and convert it into a binary tissue mask."""
     return np.array(Image.open(path).convert("L")) > 0
 
 
 def identify_lumen_background(tissue):
+    """Identify tissue, lumen, and background regions from the tissue mask."""
     filled = binary_fill_holes(tissue)
     lumen = filled & ~tissue
     background = ~filled
@@ -40,12 +45,14 @@ def identify_lumen_background(tissue):
 
 
 def create_distance_map(tissue, lumen, background):
+    """Calculate the distance from each tissue pixel to the nearest lumen pixel."""
     distance = distance_transform_edt(~lumen)
     distance[~tissue | background] = 0
     return distance
 
 
 def save_distance_map(distance, path):
+    """Normalize and save the distance map as a colored image."""
     # Normalize distance values within the tissue
     max_distance = distance.max()
 
@@ -71,6 +78,7 @@ def save_distance_map(distance, path):
 
 
 def load_tissue_image(path):
+    """Load a tissue image as a grayscale intensity array."""
     return np.array(Image.open(path).convert("L"))
 
 
@@ -79,8 +87,8 @@ def calculate_mean_intensity_by_distance(
     tissue_image,
     bin_size=10
 ):
+    """Calculate mean pixel intensity within distance bins from the lumen."""
 
-    
     # Only use pixels inside the tissue
     mask = (distance > 0) & (tissue_image > 0)
 
@@ -106,8 +114,8 @@ def calculate_mean_intensity_by_distance(
     return mean_distance[valid], mean_intensity[valid]
 
 
-
 def plot_intensity_vs_distance(distances, mean_intensity, path, slide_id):
+    """Plot and save mean tissue intensity against distance from the lumen in micrometres."""
     csv_path = Path(__file__).parent.parent / "data" / "slides" / "tissue_slides.csv"
     slide_data = pd.read_csv(csv_path)
     slide_row = slide_data[slide_data["slide_id"] == slide_id]
@@ -133,9 +141,8 @@ def plot_intensity_vs_distance(distances, mean_intensity, path, slide_id):
     plt.close()
 
 
-
-
 def main(slide_id):
+    """Process a slide, generate its distance map, and plot intensity against lumen distance."""
     total_start = time.perf_counter()
 
     # Load mask #

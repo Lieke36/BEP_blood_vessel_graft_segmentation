@@ -1,5 +1,15 @@
 ### Evaluate_DPT ###
 
+# What does Evaluate_DPT.py do?
+# This script creates the segmentation prediction masks of a set of specified patches using model 2 architecture (DPT + DINOv2 initialization)
+
+# How do use Evaluate_DPT.py?
+# 1. Change the input, output and model paths to the correct location. The input path should be a folder containing tissue and masks image patches.
+# The output path should be the path where the prediction masks should be stored. The model path should be the path to the model parameters which will be used to create the segmentation.
+# 2. Set the slide_id_list and patch_nr_list variables to the patch id's you want to segment.
+
+## Libraries ##
+
 from pathlib import Path
 import numpy as np
 from PIL import Image
@@ -7,14 +17,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import timm
-
 from Losses_metrics import calculate_metrics
 
 
-# ============================================================
-# Configuration
-# ============================================================
-
+ 
+## Configuration ##
+ 
 ENCODER = "vit_small_patch14_dinov2.lvd142m"
 CLASSES = 1
 IMG_SIZE = 512
@@ -28,10 +36,35 @@ IMAGE_STD = np.array(
     [0.229, 0.224, 0.225], dtype=np.float32
 ).reshape(3, 1, 1)
 
+## Settings ##
 
-# ============================================================
-# Device
-# ============================================================
+INPUT_PATH = Path(
+    r"/home/20234257/BEP_Project/External_data/validation"
+)
+
+OUTPUT_PATH = Path(
+    r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/evaluation/dpt_n10000_bs8_ep50"
+)
+
+MODEL_PATH = Path(
+    r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/models/dpt_n10000_bs8_ep50_10_80_10_DPT_best.pth"
+)
+
+# Note:
+# train_slide_id_list = [
+#     9943, 10010, 10210, 10143, 10315, 9972, 10174,
+#     10955, 10925, 11014, 10858, 11057, 11133, 10765, 
+#     10782, 10535, 10361, 10404, 10449, 10284, 10503, 
+#     11525, 11418, 11629, 7522, 80490, 80501, 80589
+# ]
+# test_slide_id_list = [2152, 11193, 10648, 11743, 80975, 80600]
+# val_slide_id_list = [10251, 11084, 10886, 11712, 11273, 80655]
+
+slide_id_list = [9943]
+patch_nr_list = [0, 104, 113, 126, 127]
+
+
+## Device ##
 
 def get_device():
     if torch.cuda.is_available():
@@ -42,10 +75,7 @@ def get_device():
         print("CUDA not available. Using CPU.")
     return device
 
-
-# ============================================================
-# Model
-# ============================================================
+## Model ##
 
 class CustomViTDPT(nn.Module):
     def __init__(self, encoder_name=ENCODER, out_channels=CLASSES, pretrained=False):
@@ -171,9 +201,7 @@ def load_model(model_path, device):
     return model
 
 
-# ============================================================
-# Preprocessing
-# ============================================================
+##Preprocessing ##
 
 def preprocess_image(image_path):
     image_path = Path(image_path)
@@ -212,9 +240,7 @@ def load_ground_truth(mask_path):
     return torch.from_numpy(mask).float().unsqueeze(0).unsqueeze(0)
 
 
-# ============================================================
-# Prediction
-# ============================================================
+## Prediction ##
 
 def download_predicted_mask(
     slide_id,
@@ -307,37 +333,9 @@ def download_predicted_mask(
     }
 
 
-# ============================================================
-# Main
-# ============================================================
-
-# Note:
-# train_slide_id_list = [
-#     9943, 10010, 10210, 10143, 10315, 9972, 10174,
-#     10955, 10925, 11014, 10858, 11057, 11133, 10765, 
-#     10782, 10535, 10361, 10404, 10449, 10284, 10503, 
-#     11525, 11418, 11629, 7522, 80490, 80501, 80589
-# ]
-# test_slide_id_list = [2152, 11193, 10648, 11743, 80975, 80600]
-# val_slide_id_list = [10251, 11084, 10886, 11712, 11273, 80655]
-
-slide_id_list = [9943]
-patch_nr_list = [0, 104, 113, 126, 127]
+## Main ##
 
 if __name__ == "__main__":
-
-    INPUT_PATH = Path(
-        r"/home/20234257/BEP_Project/External_data/validation"
-    )
-
-    OUTPUT_PATH = Path(
-        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/evaluation/dpt_n10000_bs8_ep50"
-    )
-
-    MODEL_PATH = Path(
-        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/models/dpt_n10000_bs8_ep50_10_80_10_DPT_best.pth"
-    )
-
     device = get_device()
     model = load_model(MODEL_PATH, device)
 

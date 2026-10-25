@@ -1,35 +1,40 @@
 ### Evaluation test ###
-# ============================================================
+
+# What does Evaluation_test.py do?
+# This scipt evaluates the model performance of a model with te architecture of model 1 on the test data set.\
+
+# How to use Evaluation_test.py?
+# Set all paths: 
+# The MODEL_PATH should go the model that will be evaluated.
+# The TRAINING_SUMMARY_PATH, SUMMARY_PATH and SLIDE_SUMMARY_PATH should go to their respective csv file locations.
+# The TEST_DIR path should go to the folder where the test set tissue and mask patches are in.
+
 # Evaluate a trained segmentation model on the test set
 # Standalone: does not import Model.py
-# ============================================================
+
 
 from pathlib import Path
 import re
 import time
-
 import numpy as np
 import pandas as pd
 from PIL import Image
-
 import torch
 from torch.utils.data import Dataset, DataLoader
-
 import segmentation_models_pytorch as smp
-
 from Losses_metrics import BCEDiceLoss, calculate_metrics
 
 
-# ============================================================
-# Configuration: PATHS ONLY
-# ============================================================
+
+## Settings ##
+
 
 MODEL_PATH = Path(
-    "/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/models/n28000_bs8_ep50_10_80_10_best.pth"
+    "/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/models/n28000_bs8_ep50_10_80_10_best.pth"
 )
 
 TRAINING_SUMMARY_PATH = Path(
-    "/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/metrics/n28000_bs8_ep50_10_80_10_training_summary.csv"
+    "/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/metrics/n28000_bs8_ep50_10_80_10_training_summary.csv"
 )
 
 TEST_DIR = Path(
@@ -37,17 +42,17 @@ TEST_DIR = Path(
 )
 
 SUMMARY_PATH = Path(
-    "/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/metrics/testing_summary.csv"
+    "/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/metrics/testing_summary.csv"
 )
 
 SLIDE_SUMMARY_PATH = Path(
-    "/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/metrics/testing_summary_slides.csv"
+    "/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/metrics/testing_summary_slides.csv"
 )
 
 
-# ============================================================
-# Evaluation settings
-# ============================================================
+
+## Evaluation configurations ##
+
 
 BATCH_SIZE = 8
 NUM_WORKERS = 4
@@ -55,9 +60,7 @@ PIN_MEMORY = True
 DEFAULT_THRESHOLD = 0.5
 
 
-# ============================================================
-# Dataset
-# ============================================================
+## Dataset ##
 
 class TestDataset(Dataset):
     """Load paired tissue images and binary masks."""
@@ -117,9 +120,7 @@ class TestDataset(Dataset):
         return image, mask
 
 
-# ============================================================
 # Find test image/mask pairs
-# ============================================================
 
 def find_test_pairs(directory):
     directory = Path(directory)
@@ -176,9 +177,7 @@ def find_test_pairs(directory):
     return image_paths, mask_paths
 
 
-# ============================================================
 # Extract slide ID
-# ============================================================
 
 def extract_slide_id(image_path):
     filename = Path(image_path).name
@@ -196,9 +195,7 @@ def extract_slide_id(image_path):
     return match.group(1)
 
 
-# ============================================================
 # Load configuration from checkpoint and training CSV
-# ============================================================
 
 def load_configuration(model_path, summary_path):
     """
@@ -262,9 +259,7 @@ def load_configuration(model_path, summary_path):
     return checkpoint, encoder, threshold, summary
 
 
-# ============================================================
 # Load model
-# ============================================================
 
 def load_model(checkpoint, encoder, device):
     """
@@ -291,9 +286,7 @@ def load_model(checkpoint, encoder, device):
     return model
 
 
-# ============================================================
 # Patch classification and Dice
-# ============================================================
 
 def calculate_patch_dice(prediction, mask):
     intersection = (prediction * mask).sum()
@@ -317,9 +310,7 @@ def classify_patch(mask):
     return "edge"
 
 
-# ============================================================
 # Evaluate overall test set
-# ============================================================
 
 def evaluate_overall(
     model,
@@ -390,9 +381,7 @@ def evaluate_overall(
     }
 
 
-# ============================================================
 # Evaluate metrics per slide
-# ============================================================
 
 def evaluate_by_slide(
     model,
@@ -524,9 +513,7 @@ def evaluate_by_slide(
     return pd.DataFrame(results)
 
 
-# ============================================================
-# Main
-# ============================================================
+## Main ##
 
 def main():
     SUMMARY_PATH.parent.mkdir(

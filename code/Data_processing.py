@@ -27,6 +27,42 @@ Image.MAX_IMAGE_PIXELS = None # avoid error due to large image (slide)
 
 start_time = time.time()
 
+## set ratios ##
+# ratios: (fill in None for all for no set ratio)
+background_ratio = 0.1
+edge_ratio = 0.8
+foreground_ratio = 0.1
+
+if background_ratio == edge_ratio == foreground_ratio == None:
+    ratio_name = "random"
+else:
+    ratio_name = (
+        f"{int(background_ratio * 100)}_"
+        f"{int(edge_ratio * 100)}_"
+        f"{int(foreground_ratio * 100)}"
+    )
+
+## set paths of the slides and the output paths ##
+slides_dir = r"/home/20234257/BEP_Project/External_data/slides"
+
+train_output_dir = (
+    f"/home/20234257/BEP_Project/External_data/"
+    f"training_{ratio_name}"
+)
+
+test_output_dir = r"/home/20234257/BEP_Project/External_data/testing"
+val_output_dir = r"/home/20234257/BEP_Project/External_data/validation"
+
+## train-test-val split ##
+train_slide_id_list = [
+    9943, 10010, 10210, 10143, 10315, 9972, 10174,
+    10955, 10925, 11014, 10858, 11057, 11133, 10765, 
+    10782, 10535, 10361, 10404, 10449, 10284, 10503, 
+    11525, 11418, 11629, 7522, 80490, 80501, 80589
+]
+test_slide_id_list = [2152, 11193, 10648, 11743, 80975, 80600]
+val_slide_id_list = [10251, 11084, 10886, 11712, 11273, 80655]
+
 ## functions ##
 
 def get_required_source_size(
@@ -924,34 +960,6 @@ def get_slide_ids(csv_path):
     return slide_ids
 
 
-## set ratios ##
-# ratios: (fill in None for all for no set ratio)
-background_ratio = 0.1
-edge_ratio = 0.8
-foreground_ratio = 0.1
-
-ratio_name = (
-    f"{int(background_ratio * 100)}_"
-    f"{int(edge_ratio * 100)}_"
-    f"{int(foreground_ratio * 100)}"
-)
-
-
-## set paths of the slides and the output paths ##
-# Note to self: for HPC, use the correct (different) paths!
-slides_dir = r"/home/20234257/BEP_Project/External_data/slides"
-
-# -> for data processing WITHOUT set ratio
-#train_output_dir = r"/home/20234257/BEP_Project/External_data/training_random"
-
-# -> for data processing WITH set ratio
-train_output_dir = (
-    f"/home/20234257/BEP_Project/External_data/"
-    f"training_{ratio_name}"
-)
-
-test_output_dir = r"/home/20234257/BEP_Project/External_data/testing"
-val_output_dir = r"/home/20234257/BEP_Project/External_data/validation"
 
 slides_csv = Path("data/slides/tissue_slides.csv")
 
@@ -960,15 +968,6 @@ image_id_list = get_slide_ids(slides_csv)
 print(f"Found {len(image_id_list)} slide IDs:")
 print(image_id_list)
 
-## train-test-val split ##
-train_slide_id_list = [
-    9943, 10010, 10210, 10143, 10315, 9972, 10174,
-    10955, 10925, 11014, 10858, 11057, 11133, 10765, 
-    10782, 10535, 10361, 10404, 10449, 10284, 10503, 
-    11525, 11418, 11629, 7522, 80490, 80501, 80589
-]
-test_slide_id_list = [2152, 11193, 10648, 11743, 80975, 80600]
-val_slide_id_list = [10251, 11084, 10886, 11712, 11273, 80655]
 
 
 

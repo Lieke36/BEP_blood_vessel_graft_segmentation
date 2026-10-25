@@ -1,5 +1,12 @@
 ### Losses and metrics ###
 
+# What does Losses_metrics.py do?
+# This script contain the functions to calculate the metrics of the models and the loss functions. 
+# The loss function has a Dice weight of 0.5 and a BCE weight of 0.5.
+
+# How to use Losses_metrics.py?
+# No actions are needed before using this code. The script is called in the model and evaluation scripts.
+
 ## loss functions ##
 # Dice loss
 # BCE loss
@@ -15,9 +22,7 @@
 import torch
 import torch.nn as nn
 
-# ============================================================
-# Dice loss
-# ============================================================
+## Dice loss ##
 
 class DiceLoss(nn.Module):
     """
@@ -68,9 +73,7 @@ class DiceLoss(nn.Module):
         return 1.0 - dice
 
 
-# ============================================================
-# Combined BCE + Dice loss
-# ============================================================
+## Combined BCE + Dice loss ##
 
 class BCEDiceLoss(nn.Module):
     """
@@ -119,9 +122,7 @@ class BCEDiceLoss(nn.Module):
         return total_loss
 
 
-# ============================================================
-# Dice metric
-# ============================================================
+## Dice metric ##
 
 def dice_score(
     logits,
@@ -169,9 +170,7 @@ def dice_score(
     return dice.mean().item()
 
 
-# ============================================================
-# Sensitivity / Recall
-# ============================================================
+## Sensitivity / Recall ##
 
 def sensitivity_score(
     logits,
@@ -222,9 +221,7 @@ def sensitivity_score(
     return sensitivity.mean().item()
 
 
-# ============================================================
-# Precision
-# ============================================================
+## Precision ##
 
 def precision_score(
     logits,
@@ -276,9 +273,7 @@ def precision_score(
     return precision.mean().item()
 
 
-# ============================================================
-# Calculate all metrics
-# ============================================================
+## Calculate all metrics ##
 
 def calculate_metrics(
     logits,
@@ -313,4 +308,3 @@ def calculate_metrics(
             threshold=threshold,
         ),
     }
-
