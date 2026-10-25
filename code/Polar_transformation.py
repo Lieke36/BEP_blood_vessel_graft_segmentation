@@ -1,10 +1,14 @@
-### test ###
+### Polar Transformation ###
 
-# Creates rectangle intensity graph with degrees on y-axis, and normalized distance on x-axis
-# Also refolds it to make the ideal annulus (ring) tissue
-# Pro: general (same reconstruction for all slides regardless of size) -> can be used for all images
-# Problem 1 : The larger the radius, the more stretched after refolding
-# Problem 2 : Very deformed tissue gets messed up a (see slide 10010)
+# What does Polar_transformation.py do?
+# This scrpt performs a polar transformation on the slide specified in SLIDE_ID, it calculates the center of the map and uses this to create a rectengular polar representation map.
+# This map is then refolded to create the slide transformation to an ideal annulus. Then the intensity is plotted against radius and circumferential angle.
+
+# How to use Polar_transformation.py?
+# 1. Set the paths: TISSUE_PATH and MASK_PATH to tissue and mask path respectively and OUTPUT_DIR should go to the folder where the maps and graphs should be stored.
+# 2. Set slide_id variable to the slide id of the slide that will be analysed using polar transform
+
+## Libraries ##
 
 from pathlib import Path
 import numpy as np
@@ -13,10 +17,19 @@ from scipy import ndimage
 import matplotlib.pyplot as plt
 import pandas as pd
 import time
-
 from PIL import Image
-
 Image.MAX_IMAGE_PIXELS = None
+
+
+## Settings ##
+
+SLIDE_ID = "11743"
+
+TISSUE_PATH = Path(rf"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_{SLIDE_ID}_tissue.png")
+MASK_PATH = Path(rf"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_{SLIDE_ID}_mask.png")
+OUTPUT_DIR = Path(r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\POLAR_transformation")
+
+## Functions ##
 
 def load_and_preprocess_images(tissue_path: Path, mask_path: Path):
     """Loads tissue (RGB or Grayscale) and mask images, keeping color channels intact."""
@@ -370,15 +383,9 @@ def process_vessel_pipeline(
 
 ### EXECUTION ###
 
-SLIDE_ID = "11743"
-
 start_time = time.perf_counter()
 
 if __name__ == "__main__":
-    TISSUE_PATH = Path(rf"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_{SLIDE_ID}_tissue.png")
-    MASK_PATH = Path(rf"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_{SLIDE_ID}_mask.png")
-    OUTPUT_DIR = Path(r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\POLAR_transformation")
-
     process_vessel_pipeline(
         tissue_path=TISSUE_PATH,
         mask_path=MASK_PATH,

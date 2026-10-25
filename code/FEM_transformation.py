@@ -1,4 +1,4 @@
-### FEM_transformation ###
+### FEM Transformation ###
 
 # What does FEM_transformation.py do?
 # FEM mapping of a vessel cross-section to an ideal annulus.

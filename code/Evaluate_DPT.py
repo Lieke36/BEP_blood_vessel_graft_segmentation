@@ -1,7 +1,7 @@
 ### Evaluate_DPT ###
 
 # What does Evaluate_DPT.py do?
-# This script creates the segmentation prediction masks of a set of specified patches using model 2 architecture (DPT + DINOv2 initialization)
+# This script creates the segmentation prediction masks of a set of specified patches using model 2 architecture (DPT + DINOv2 initialization).
 
 # How do use Evaluate_DPT.py?
 # 1. Change the input, output and model paths to the correct location. The input path should be a folder containing tissue and masks image patches.

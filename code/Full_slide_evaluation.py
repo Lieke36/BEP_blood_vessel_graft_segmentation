@@ -1,5 +1,15 @@
-### full slide evaluate ###
-# (for model 1)
+### full slide evaluate (model 1)###
+
+# What does Full_slide_evaluation.py do?
+# This script creates the segmentation prediction mask of a set of slides using the model 1 architecture (U-Net resnet34 + ImageNet initialization).
+
+# How do use Full_slide_evaluation.py?
+# 1. Change the input, output and model paths to the correct location. The SLIDES_DIR should be the folder containing the tissue and masks image slides. The PATCH_DIR should be the folder containing the patches which were extracted using full slide patch extraction.
+# The OUTPUT_PATH should be the path where the prediction masks should be stored. The MODEL_PATH should be the path to the model parameters which will be used to create the segmentation.
+# 2. Set the slide_id_list variables to the slide id's of the slides you want to segment.
+
+
+## Libraries ##
 
 from pathlib import Path
 import csv
@@ -7,11 +17,36 @@ import numpy as np
 from PIL import Image
 import torch
 import segmentation_models_pytorch as smp
-
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 
 
+## Settings ##
+
+SLIDE_ID_LIST = [10648, 11193, 11743, 2152, 80600, 80975]
+
+SLIDES_DIR = Path(
+    r"/home/20234257/BEP_Project/External_data/slides"
+)
+
+PATCH_DIR = Path(
+    r"/home/20234257/BEP_Project/External_data/testing"
+)
+
+PATCH_CSV = Path(
+    r"data/test/test_tissue_patches.csv"
+)
+
+OUTPUT_PATH = Path(
+    r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/full_slide_predictions"
+)
+
+MODEL_PATH = Path(
+    r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/models/n28000_bs8_ep50_10_80_10_best.pth"
+)
+
+
+## Model parameters ##
 ENCODER = "resnet34"
 IN_CHANNELS = 3
 CLASSES = 1
@@ -22,6 +57,8 @@ BATCH_SIZE = 8
 IMAGE_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32).reshape(3, 1, 1)
 IMAGE_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32).reshape(3, 1, 1)
 
+
+## Functions ##
 
 def get_device():
     if torch.cuda.is_available():
@@ -228,38 +265,9 @@ def predict_full_slide(
     return output_file
 
 
+## Main ##
+
 if __name__ == "__main__":
-
-    # ---------------------------------------------------------
-    # Configuration
-    # ---------------------------------------------------------
-
-    SLIDE_ID_LIST = [10648, 11193, 11743, 2152, 80600, 80975]
-
-    SLIDES_DIR = Path(
-        r"/home/20234257/BEP_Project/External_data/slides"
-    )
-
-    PATCH_DIR = Path(
-        r"/home/20234257/BEP_Project/External_data/testing"
-    )
-
-    PATCH_CSV = Path(
-        r"data/test/test_tissue_patches.csv"
-    )
-
-    OUTPUT_PATH = Path(
-        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/full_slide_predictions"
-    )
-
-    MODEL_PATH = Path(
-        r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/models/n28000_bs8_ep50_10_80_10_best.pth" # CHANGE #
-    )
-
-    # ---------------------------------------------------------
-    # Predict each complete slide
-    # ---------------------------------------------------------
-
     for slide_id in SLIDE_ID_LIST:
         predict_full_slide(
             slide_id=slide_id,

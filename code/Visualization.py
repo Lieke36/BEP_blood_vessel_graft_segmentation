@@ -1,15 +1,30 @@
 ### Visualization ###
 
+# What does Visualization.py do?
+# This script is an utility script that plots the training history and training summary of multiple models to visually compare model performances. 
+# model_csv_list contains the training history csv file of each model trained during the project with model_metric_csv_list containing the respective training summary csv files and model_label_list their respective labels.
+
+# How to use Visualization.py?
+# 1. If this script is run in the original GitHub setup: No changes needed.
+# 2. If this script is run seperately: make sure metric_path goes to the folder containing the csv files and output_path goes to the folder where the new plots should be stored.
+# 3. Delete/add the # of the csv lists to select which models to compare
+
+
+## Libraries ##
 from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
 
+
+## Paths ##
 repo_path = Path(__file__).resolve().parent.parent
 
-metric_path = repo_path / "results_full" / "metrics"             # Change to correct path #
-output_path = repo_path / "results_full" / "Visualizations"      # Change to correct path #
+metric_path = repo_path / "results" / "metrics"
+output_path = repo_path / "results" / "Visualizations"
 
 output_path.mkdir(parents=True, exist_ok=True)
+
+## Model lists ##
 
 model_csv_list = [
     #metric_path / "n28000_bs8_ep50_random_training_history.csv",
@@ -58,6 +73,8 @@ model_label_list = [
     "Model_1_edge_WD=1e-3",
     "Model_1_edge_WD=1e-5",
 ]
+
+## Functions ##
 
 def combine_graph(model_csv_list, model_label_list):
     """Combines training histories from multiple models into one PNG."""
@@ -355,6 +372,8 @@ def barplot_model_metrics(
 
     return output_file
 
+
+## Main ##
 
 if __name__ == "__main__":
     combine_graph(model_csv_list, model_label_list)
