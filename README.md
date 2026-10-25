@@ -12,6 +12,7 @@ The `code/` folder contains the complete project pipeline:
 - `Losses_metrics.py`: Loss functions and evaluation metrics.
 - `Evaluate.py`: Extraction of (sigmoid) prediction mask of patches using the three trained models.
 - `Full_slide_evaluation.py`: Extraction of prediction mask of full slide using the three trained models.
+- `Evaluation_test.py`: Evaluates performance of final model on test set.
 - `Transformation.py`: scripts for the three spatial analysis implementations.
 - `Visualization.py`: Utility script to make graphs and bar plots to visualize and compare models.
 The three models each have their own version of Model.py, Evaluate.py and Full_slide_evaluation.py
