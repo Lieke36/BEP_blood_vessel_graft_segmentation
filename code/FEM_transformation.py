@@ -1,6 +1,6 @@
-### test v3 ###
+### FEM_transformation ###
 
-#
+# What does FEM_transformation.py do?
 # FEM mapping of a vessel cross-section to an ideal annulus.
 #
 # Each angular sector consists of:
@@ -47,12 +47,16 @@
 #
 # The lumen itself is therefore transformed together with the tissue.
 #
-# Pro: Less stretching than v1 and keeps width of tissue (no normalization)
 # Issue: Very deformed bloodvessels are unable to be analysed (see slide 10010 for example)
 
+# How to use FEM_transformation.py?
+# 1. Set SLIDE_ID to the slide id of the slide you want to analysis using FEM transformation.
+# 2. Set paths: TISSUE_PATH should go to the correct image tissue slide, MASK_PATH should go to the correct image mask slide, OUTPUT_DIR should go to the folder where the maps and graphs should be stored.
+
+
+## libaries ##
 
 from pathlib import Path
-
 import numpy as np
 from PIL import Image
 from scipy import ndimage
@@ -65,9 +69,22 @@ from PIL import Image
 
 Image.MAX_IMAGE_PIXELS = None
 
-# ============================================================
-# IMAGE LOADING
-# ============================================================
+
+## Settings ##
+SLIDE_ID = "11743"
+
+TISSUE_PATH = Path(
+    rf"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_{SLIDE_ID}_tissue.png"
+)
+MASK_PATH = Path(
+    rf"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_{SLIDE_ID}_mask.png"
+)
+OUTPUT_DIR = Path(
+    r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\FEM_transformation"
+)
+
+
+## IMAGE LOADING ##
 
 def load_and_preprocess_images(
     tissue_path: Path,
@@ -112,9 +129,7 @@ def load_and_preprocess_images(
     return tissue_float, mask_binary
 
 
-# ============================================================
-# FIND INITIAL MASK CENTER
-# ============================================================
+## FIND INITIAL MASK CENTER ##
 
 def find_mask_center(
     mask_binary: np.ndarray,
@@ -148,9 +163,7 @@ def find_mask_center(
     return center_x, center_y
 
 
-# ============================================================
-# FIND INNER AND OUTER BOUNDARY NODES
-# ============================================================
+## FIND INNER AND OUTER BOUNDARY NODES ##
 
 def find_boundary_nodes(
     mask_binary: np.ndarray,
@@ -340,9 +353,7 @@ def find_boundary_nodes(
     )
 
 
-# ============================================================
-# CALCULATE LUMEN CENTER
-# ============================================================
+## CALCULATE LUMEN CENTER ##
 
 def calculate_lumen_center(
     inner_nodes: np.ndarray,
@@ -370,9 +381,7 @@ def calculate_lumen_center(
     )
 
 
-# ============================================================
-# CALCULATE AVERAGE RADII
-# ============================================================
+## CALCULATE AVERAGE RADII ##
 
 def calculate_average_radii(
     inner_nodes: np.ndarray,
@@ -495,9 +504,7 @@ def calculate_target_canvas(
     )
 
 
-# ============================================================
-# BILINEAR SHAPE FUNCTIONS
-# ============================================================
+## BILINEAR SHAPE FUNCTIONS ##
 
 def bilinear_shape_functions(
     xi,
@@ -546,9 +553,7 @@ def bilinear_shape_functions(
     )
 
 
-# ============================================================
-# BILINEAR QUAD MAPPING
-# ============================================================
+## BILINEAR QUAD MAPPING ##
 
 def bilinear_map(
     nodes: np.ndarray,
@@ -592,9 +597,7 @@ def bilinear_map(
     )
 
 
-# ============================================================
-# INVERSE BILINEAR MAPPING
-# ============================================================
+## INVERSE BILINEAR MAPPING ##
 
 def inverse_bilinear_map(
     nodes: np.ndarray,
@@ -774,9 +777,7 @@ def inverse_bilinear_map(
     )
 
 
-# ============================================================
-# TRIANGLE BARYCENTRIC COORDINATES
-# ============================================================
+## TRIANGLE BARYCENTRIC COORDINATES ##
 
 def triangle_barycentric(
     p1: np.ndarray,
@@ -838,9 +839,7 @@ def triangle_barycentric(
     )
 
 
-# ============================================================
-# TRIANGLE MAPPING
-# ============================================================
+## TRIANGLE MAPPING ##
 
 def triangle_map(
     source_nodes: np.ndarray,
@@ -887,9 +886,7 @@ def triangle_map(
     )
 
 
-# ============================================================
-# INTERPOLATE IMAGE
-# ============================================================
+## INTERPOLATE IMAGE ##
 
 def interpolate_image(
     tissue_padded: np.ndarray,
@@ -948,9 +945,7 @@ def interpolate_image(
     )
 
 
-# ============================================================
-# FEM RECONSTRUCTION
-# ============================================================
+## FEM RECONSTRUCTION ##
 
 def fem_reconstruct_annulus(
     tissue: np.ndarray,
@@ -1603,9 +1598,7 @@ def fem_reconstruct_annulus(
     ).astype(np.uint8)
 
 
-# ============================================================
-# SAVE IMAGE
-# ============================================================
+## SAVE IMAGE ##
 
 def save_image(
     array: np.ndarray,
@@ -1633,9 +1626,7 @@ def save_image(
     return output_path
 
 
-# ============================================================
-# SAVE FEM NODES
-# ============================================================
+## SAVE FEM NODES ##
 
 def save_fem_nodes(
     output_path: Path,
@@ -1670,9 +1661,7 @@ def save_fem_nodes(
     )
 
 
-# ============================================================
-# GRAPHS
-# ============================================================
+## GRAPHS ##
 
 def calculate_and_save_intensity_graphs(
     tissue: np.ndarray,
@@ -1847,9 +1836,7 @@ def calculate_and_save_intensity_graphs(
     )
     plt.close()
 
-# ============================================================
-# MAIN PIPELINE
-# ============================================================
+## MAIN PIPELINE ##
 
 def process_fem_pipeline(
     tissue_path: Path,
@@ -1974,25 +1961,11 @@ def process_fem_pipeline(
     print("8. FEM pipeline complete.")
 
 
-# ============================================================
-# EXECUTION
-# ============================================================
-
-SLIDE_ID = "11743"
+## EXECUTION ##
 
 start_time = time.perf_counter()
 
 if __name__ == "__main__":
-    TISSUE_PATH = Path(
-        rf"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_{SLIDE_ID}_tissue.png"
-    )
-    MASK_PATH = Path(
-        rf"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\image_{SLIDE_ID}_mask.png"
-    )
-    OUTPUT_DIR = Path(
-        r"C:\Users\20234257\OneDrive - TU Eindhoven\BEP Project\external data\slides\FEM_transformation"
-    )
-
     process_fem_pipeline(
         tissue_path=TISSUE_PATH,
         mask_path=MASK_PATH,

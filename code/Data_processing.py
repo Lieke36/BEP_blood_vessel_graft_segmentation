@@ -20,7 +20,6 @@ import csv
 import math
 import random
 import time # to see runtime of data set
-
 from PIL import Image
 
 Image.MAX_IMAGE_PIXELS = None # avoid error due to large image (slide)
