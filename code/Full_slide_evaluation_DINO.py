@@ -38,11 +38,11 @@ PATCH_CSV = Path(
 )
 
 OUTPUT_PATH = Path(
-    r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/full_slide_predictions"
+    r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/result/full_slide_predictions"
 )
 
 MODEL_PATH = Path(
-    r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full/models/dino_resnet50_n28000_bs8_ep50_10_80_10_DINO_best.pth" # CHANGE #
+    r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results/models/dino_resnet50_n28000_bs8_ep50_10_80_10_DINO_best.pth" # CHANGE #
 )
 
 

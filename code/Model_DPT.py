@@ -36,7 +36,7 @@ from Losses_metrics import (
 
 TRAIN_DIR = Path(r"/home/20234257/BEP_Project/External_data/training_random")
 VALIDATION_DIR = Path(r"/home/20234257/BEP_Project/External_data/validation")
-RESULTS_DIR = Path(r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results_full")
+RESULTS_DIR = Path(r"/home/20234257/BEP_Project/BEP_blood_vessel_graft_segmentation-main/results")
 
 MODEL_DIR = RESULTS_DIR / "models"
 METRICS_DIR = RESULTS_DIR / "metrics"
